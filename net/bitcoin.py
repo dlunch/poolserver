@@ -32,6 +32,7 @@ class Bitcoin(object):
                     if not data:
                         break
                     result += data
+                file.close()
                 result = json.loads(result)
                 if result['error']:
                     raise RPCError(result['error'])
