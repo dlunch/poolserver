@@ -9,6 +9,8 @@ class RPCError(Exception):
 
 
 class Bitcoin(object):
+    address_prefix = '\x00'
+
     def __init__(self, host, port, username, password):
         self.rpc_host = 'http://%s:%d' % (host, port)
         self.auth = base64.encodestring('%s:%s' % (username, password))\
