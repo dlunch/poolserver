@@ -1,0 +1,3 @@
+address = ''
+
+generation_pubkey = ''
