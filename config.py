@@ -1,3 +1,0 @@
-address = ''
-
-generation_pubkey = ''
