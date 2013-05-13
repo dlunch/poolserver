@@ -1,4 +1,4 @@
-net = 'bitcoin'
+net = 'bitcoin_testnet'
 
 rpc_host = 'localhost'
 rpc_port = 8332
