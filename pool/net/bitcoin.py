@@ -2,6 +2,9 @@ import urllib2
 import json
 import base64
 import time
+import hashlib
+
+from .. import util
 
 
 class RPCError(Exception):
@@ -17,7 +20,9 @@ class Bitcoin(object):
                           .replace('\n', '')
 
     def _send_rpc(self, method, params=[]):
-        request_data = json.dumps({'id': 0, 'method': method, 'params': params})
+        request_data = json.dumps({'id': 0,
+                                   'method': method,
+                                   'params': params})
 
         while True:
             try:
@@ -25,7 +30,7 @@ class Bitcoin(object):
                 req.add_header("Authorization", "Basic %s" % self.auth)
                 req.add_header("Content-Type", "text/plain")
                 req.add_data(request_data)
-                
+
                 file = urllib2.urlopen(req)
 
                 result = ''
@@ -46,3 +51,19 @@ class Bitcoin(object):
 
     def getblocktemplate(self):
         return self._send_rpc('getblocktemplate')
+
+    @classmethod
+    def address_to_pubkey(cls, address):
+        data = util.base58_decode(address, 25)
+        if data[0] != cls.address_prefix:
+            print data[0], cls.address_prefix
+            raise Exception("Unknown address type")
+        return data[1:21]
+
+    @classmethod
+    def pubkey_to_address(cls, pubkey):
+        data = cls.address_prefix + pubkey
+        checksum = hashlib.sha256(hashlib.sha256(data).digest()).digest()[:4]
+        result = util.base58_encode(data + checksum)
+
+        return util.base58_data[0]*(34-len(result)) + result

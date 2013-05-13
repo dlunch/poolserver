@@ -1,11 +1,11 @@
 import struct
-import binascii
-import hashlib
 
+b = bytes
+
+
+def long_to_bytes(n, blocksize=0):
 # From https://github.com/dlitz/pycrypto/blob/master/lib/Crypto/Util/number.py
 # (Public domain)
-b = bytes
-def long_to_bytes(n, blocksize=0):
     """long_to_bytes(n:long, blocksize:int) : string
     Convert a long integer to a byte string.
 
@@ -35,6 +35,7 @@ def long_to_bytes(n, blocksize=0):
         s = (blocksize - len(s) % blocksize) * b('\000') + s
     return s
 
+
 def bytes_to_long(s):
     """bytes_to_long(string) : long
     Convert a byte string to a long integer.
@@ -55,6 +56,7 @@ def bytes_to_long(s):
 
 base58_data = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
+
 def base58_encode(data):
     result = ''
     value = bytes_to_long(data)
@@ -73,19 +75,6 @@ def base58_decode(data, size):
         mul *= 58
 
     return long_to_bytes(value, size)
-
-
-def address_to_pubkey(address):
-    data = base58_decode(address, 25)
-    return data[1:21]
-
-
-def pubkey_to_address(pubkey, net):
-    data = net.address_prefix + pubkey
-    checksum = hashlib.sha256(hashlib.sha256(data).digest()).digest()[:4]
-    result = base58_encode(data + checksum)
-
-    return base58_data[0]*(34-len(result)) + result
 
 
 def encode_height(height):

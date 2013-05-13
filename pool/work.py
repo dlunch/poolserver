@@ -23,5 +23,3 @@ class Work(object):
         block_template['coinbasetxn'] = self.coinbase_tx.serialize()
 
         return block_template
-
-
