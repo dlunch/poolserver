@@ -1,9 +1,7 @@
 import urllib2
 import json
 import base64
-import time
 import hashlib
-import traceback
 import logging
 logger = logging.getLogger('Bitcoin')
 
@@ -28,30 +26,17 @@ class Bitcoin(object):
                                    'method': method,
                                    'params': params})
 
-        while True:
-            try:
-                req = urllib2.Request(self.rpc_host)
-                req.add_header("Authorization", "Basic %s" % self.auth)
-                req.add_header("Content-Type", "text/plain")
-                req.add_data(request_data)
+        req = urllib2.Request(self.rpc_host)
+        req.add_header("Authorization", "Basic %s" % self.auth)
+        req.add_header("Content-Type", "text/plain")
+        req.add_data(request_data)
 
-                file = urllib2.urlopen(req)
-
-                result = ''
-                while True:
-                    data = file.read(1024)
-                    if not data:
-                        break
-                    result += data
-                file.close()
-                result = json.loads(result)
-                if result['error']:
-                    raise RPCError(result['error'])
-                break
-            except IOError as e:
-                logger.error('Bitcoin RPC IOError')
-                logger.error(traceback.format_exc())
-                time.sleep(1)
+        file = urllib2.urlopen(req)
+        result = file.read()
+        file.close()
+        result = json.loads(result)
+        if result['error']:
+            raise RPCError(result['error'])
         return result['result']
 
     def getblocktemplate(self):
