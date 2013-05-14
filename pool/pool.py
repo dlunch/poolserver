@@ -30,7 +30,7 @@ class Pool(object):
         self.generation_pubkey =\
             self.net.address_to_pubkey(config.generation_address)
         self.work = work.Work(self.net, self.net.difficulty_to_target(
-            config.target_difficulty))
+            config.target_difficulty), self.generation_pubkey)
 
     def run(self):
-        pass
+        print self.work.getblocktemplate()

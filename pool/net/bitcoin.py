@@ -3,6 +3,10 @@ import json
 import base64
 import time
 import hashlib
+import traceback
+import logging
+logger = logging.getLogger('Bitcoin')
+
 
 from .. import util
 
@@ -44,8 +48,9 @@ class Bitcoin(object):
                 if result['error']:
                     raise RPCError(result['error'])
                 break
-            except IOError:
-                print 'Bitcoin RPC IOError'
+            except IOError as e:
+                logger.error('Bitcoin RPC IOError')
+                logger.error(traceback.format_exc())
                 time.sleep(1)
         return result['result']
 
@@ -56,7 +61,6 @@ class Bitcoin(object):
     def address_to_pubkey(cls, address):
         data = util.base58_decode(address, 25)
         if data[0] != cls.address_prefix:
-            print data[0], cls.address_prefix
             raise Exception("Unknown address type")
         return data[1:21]
 
@@ -67,3 +71,7 @@ class Bitcoin(object):
         result = util.base58_encode(data + checksum)
 
         return util.base58_data[0]*(34-len(result)) + result
+
+    @classmethod
+    def difficulty_to_target(cls, difficulty):
+        return 0x00000000FFFF0000000000000000000000000000000000000000000000000000 / difficulty

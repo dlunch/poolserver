@@ -1,13 +1,11 @@
 import struct
 import binascii
 
-import config
 import util
 from transaction import Transaction
 
 class CoinbaseTransaction(object):
-    def __init__(self, block_template):
-        
+    def __init__(self, block_template, generation_pubkey):
         #BIP 0034
         coinbase_script = util.encode_height(block_template['height'])
 
@@ -25,7 +23,7 @@ class CoinbaseTransaction(object):
             tx = Transaction(block_template['coinbasetxn'])
             coinbase_value = tx.output[0]['value']
 
-        output_script = '\x76\xa9\x14' + config.generation_pubkey + '\x88\xac'
+        output_script = '\x76\xa9\x14' + generation_pubkey + '\x88\xac'
 
         result = '\x01\x00\x00\x00' # Version
         result += '\x01' # In counter(1)
