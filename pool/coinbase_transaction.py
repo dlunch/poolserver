@@ -29,12 +29,12 @@ class CoinbaseTransaction(object):
         result += '\x01' # In counter(1)
         result += '\x00' * 32 # Input(None)
         result += '\xff\xff\xff\xff' # Input Index (None)
-        result += util.encode_integer(len(coinbase_script))
+        result += util.encode_size(len(coinbase_script))
         result += coinbase_script
         result += '\xff\xff\xff\xff' # Sequence
         result += '\x01' # Out counter(1)
         result += struct.pack('<Q', coinbase_value)
-        result += util.encode_integer(len(output_script))
+        result += util.encode_size(len(output_script))
         result += output_script
         result += '\x00\x00\x00\x00' # Lock time
 

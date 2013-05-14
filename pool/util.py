@@ -82,12 +82,12 @@ def encode_height(height):
     return struct.pack('B', len(data)) + data
 
 
-def encode_integer(integer):
-    if integer < 0xfd:
-        return struct.pack('B', integer)
-    elif integer < 0xffff:
-        return '\xfd' + struct.pack('<H', integer)
-    elif integer < 0xffffffff:
-        return '\xfe' + struct.pack('<I', integer)
+def encode_size(size):
+    if size < 0xfd:
+        return struct.pack('B', size)
+    elif size < 0xffff:
+        return '\xfd' + struct.pack('<H', size)
+    elif size < 0xffffffff:
+        return '\xfe' + struct.pack('<I', size)
     else:
-        return '\xff' + struct.pack('<Q', integer)
+        return '\xff' + struct.pack('<Q', size)
