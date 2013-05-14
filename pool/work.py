@@ -21,7 +21,6 @@ class Work(object):
 
     def _serialize_target(self):
         target_bytes = util.long_to_bytes(self.target, 32)
-        target_bytes = target_bytes[::-1]  # Little-endian
 
         return binascii.hexlify(target_bytes)
 
