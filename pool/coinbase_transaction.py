@@ -12,10 +12,10 @@ class CoinbaseTransaction(object):
         if 'coinbaseaux' in block_template:
             for i in block_template['coinbaseaux']:
                 data = binascii.unhexlify(block_template['coinbaseaux'][i])
-                coinbase_script += struct.pack('B', len(data)) + data
+                coinbase_script += data
         if 'coinbaseflags' in block_template:
             data = binascii.unhexlify(block_template['coinbaseflags'])
-            coinbase_script += struct.pack('B', len(data)) + data
+            coinbase_script += data
 
         if 'coinbasevalue' in block_template:
             coinbase_value = block_template['coinbasevalue']
