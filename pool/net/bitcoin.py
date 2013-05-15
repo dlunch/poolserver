@@ -59,4 +59,4 @@ class Bitcoin(object):
 
     @classmethod
     def difficulty_to_target(cls, difficulty):
-        return 0x00000000FFFF0000000000000000000000000000000000000000000000000000 / difficulty
+        return (0xffff << (26*8) / difficulty
