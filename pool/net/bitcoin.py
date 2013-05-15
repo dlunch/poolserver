@@ -1,4 +1,5 @@
 import urllib2
+import os
 import json
 import base64
 import hashlib
@@ -17,9 +18,37 @@ class Bitcoin(object):
     address_prefix = '\x00'
 
     def __init__(self, host, port, username, password):
-        self.rpc_host = 'http://%s:%d' % (host, port)
+        if not host or not port or not username or not password:
+            config_file = self._get_config_file()
+            if not os.path.exists(config_file):
+                raise Exception("Cannot find configuration")
+
+            host = 'localhost'
+            port = self._get_default_port()
+
+            with open(config_file, 'r') as f:
+                data = f.read()
+            data = data.splitlines(False)
+            for i in data:
+                if i.find('=') == -1:
+                    continue
+                k, v = i.split('=')
+                if k == 'rpcuser':
+                    username = v
+                elif k == 'rpcpassword':
+                    password = v
+                elif k == 'rpcport':
+                    port = v
+
+        self.rpc_host = 'http://%s:%r' % (host, port)
         self.auth = base64.encodestring('%s:%s' % (username, password))\
                           .replace('\n', '')
+
+    def _get_config_file(self):
+        return os.path.join(os.path.expanduser('~/.bitcoin'), 'bitcoin.conf')
+
+    def _get_default_port(self):
+        return 8332
 
     def _send_rpc(self, method, params=[]):
         request_data = json.dumps({'id': 0,
@@ -59,4 +88,4 @@ class Bitcoin(object):
 
     @classmethod
     def difficulty_to_target(cls, difficulty):
-        return (0xffff << (26*8) / difficulty
+        return (0xffff << (26*8)) / difficulty
