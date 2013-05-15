@@ -53,5 +53,5 @@ class Pool(object):
                                              self.serve_worker)
         server.serve_forever()
 
-    def serve_worker(self, remote):
+    def serve_worker(self, socket, remote):
         pass
