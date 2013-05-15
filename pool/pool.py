@@ -1,5 +1,7 @@
-import eventlet
-eventlet.monkey_patch()
+import gevent
+import gevent.monkey
+import gevent.server
+gevent.monkey.patch_all()
 
 import logging
 logging.basicConfig(level=logging.DEBUG,
@@ -35,9 +37,10 @@ class Pool(object):
                               self.generation_pubkey)
 
     def run(self):
-        eventlet.serve(eventlet.listen((config.worker_host,
-                                        config.worker_port)),
-                       Pool.serve_worker)
+        server = gevent.server.StreamServer((config.worker_host,
+                                             config.worker_port),
+                                             self.serve_worker)
+        server.serve_forever()
 
     def serve_worker(self, remote):
         pass
