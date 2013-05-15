@@ -1,9 +1,12 @@
+import gevent
 import binascii
+import logging
 
 from transaction import Transaction
 from coinbase_transaction import CoinbaseTransaction
 import util
 
+logger = logging.getLogger('Bitcoin')
 
 class Work(object):
     def __init__(self, net, target, generation_pubkey):
@@ -11,7 +14,13 @@ class Work(object):
         self.target = target
         self.generation_pubkey = generation_pubkey
 
-        self.block_template = self.net.getblocktemplate()
+        while True:
+            try:
+                self.block_template = self.net.getblocktemplate()
+                break
+            except net.RPCError as e:
+                logger.error("Bitcoin RPCError:%r" % e)
+            gevent.sleep(1)
         self._create_tx()
 
     def _create_tx(self):

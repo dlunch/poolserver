@@ -33,10 +33,12 @@ class Pool(object):
         while True:
             try:
                 version = self.net.getinfo()
+                info = self.net.getmininginfo()
                 break
             except Exception as e:
                 logger.error("Cannot connect to bitcoind: %r" % e)
-                gevent.sleep(1)
+            gevent.sleep(1)
+
 
         self.generation_pubkey =\
             self.net.address_to_pubkey(config.generation_address)

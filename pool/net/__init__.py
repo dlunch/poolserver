@@ -1,2 +1,1 @@
-class RPCError(Exception):
-    pass
+

@@ -6,13 +6,14 @@ import hashlib
 import logging
 
 from .. import util
-from . import RPCError
 
 logger = logging.getLogger('Bitcoin')
 
 
 class Bitcoin(object):
     address_prefix = '\x00'
+    class RPCError(Exception):
+        pass
 
     def __init__(self, host, port, username, password):
         if not host or not port or not username or not password:
@@ -57,12 +58,15 @@ class Bitcoin(object):
         req.add_header("Content-Type", "text/plain")
         req.add_data(request_data)
 
-        file = urllib2.urlopen(req)
-        result = file.read()
-        file.close()
+        try:
+            file = urllib2.urlopen(req)
+            result = file.read()
+            file.close()
+        except urllib2.HTTPError as e:
+            result = e.read()
         result = json.loads(result)
         if result['error']:
-            raise RPCError(result['error'])
+            raise self.RPCError(result['error'])
         return result['result']
 
     def getblocktemplate(self):
@@ -70,6 +74,9 @@ class Bitcoin(object):
 
     def getinfo(self):
         return self._send_rpc('getinfo')
+
+    def getmininginfo(self):
+        return self._send_rpc('getmininginfo')
 
     @classmethod
     def address_to_pubkey(cls, address):
