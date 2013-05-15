@@ -4,14 +4,11 @@ import json
 import base64
 import hashlib
 import logging
-logger = logging.getLogger('Bitcoin')
-
 
 from .. import util
+from . import RPCError
 
-
-class RPCError(Exception):
-    pass
+logger = logging.getLogger('Bitcoin')
 
 
 class Bitcoin(object):
@@ -70,6 +67,9 @@ class Bitcoin(object):
 
     def getblocktemplate(self):
         return self._send_rpc('getblocktemplate')
+
+    def getinfo(self):
+        return self._send_rpc('getinfo')
 
     @classmethod
     def address_to_pubkey(cls, address):

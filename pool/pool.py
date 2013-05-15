@@ -3,6 +3,7 @@ import gevent.monkey
 import gevent.server
 gevent.monkey.patch_all()
 
+import traceback
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
@@ -28,6 +29,14 @@ class Pool(object):
                 config.rpc_port,
                 config.rpc_username,
                 config.rpc_password)
+
+        while True:
+            try:
+                version = self.net.getinfo()
+                break
+            except Exception as e:
+                logger.error("Cannot connect to bitcoind: %r" % e)
+                gevent.sleep(1)
 
         self.generation_pubkey =\
             self.net.address_to_pubkey(config.generation_address)
