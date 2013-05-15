@@ -35,4 +35,9 @@ class Pool(object):
                               self.generation_pubkey)
 
     def run(self):
-        print self.work.getblocktemplate()
+        eventlet.serve(eventlet.listen((config.worker_host,
+                                        config.worker_port)),
+                       Pool.serve_worker)
+
+    def serve_worker(self, remote):
+        pass
