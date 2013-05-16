@@ -52,6 +52,7 @@ class Pool(object):
                               self.generation_pubkey)
 
     def run(self):
+        self.work.refresh_work()
         server = gevent.server.StreamServer((config.worker_host,
                                              config.worker_port),
                                             self._serve_worker)
@@ -82,6 +83,7 @@ class Pool(object):
             file.write(self._create_error_response(None,
                                                    'Internal Error', -32603))
         finally:
+            logger.debug('Request process complete')
             file.close()
             socket.close()
 
@@ -107,15 +109,19 @@ class Pool(object):
             return self._create_error_response(data['id'],
                                                'Method Not Found', -32601)
         try:
-            return self._create_response(data['id'], method(data['params']))
+            longpollid = None
+            if 'longpollid' in data:
+                longpollid = data['longpollid']
+            return self._create_response(data['id'],
+                                         method(data['params'], longpollid))
         except:
             logger.error('Exception while processing request')
             logger.error(traceback.format_exc())
             return self._create_error_response(data['id'],
                                                'Internal Error', -32603)
 
-    def _handle_getblocktemplate(self, params):
-        return self.work.getblocktemplate()
+    def _handle_getblocktemplate(self, params, longpollid):
+        return self.work.getblocktemplate(params, longpollid)
 
-    def _handle_getwork(self, params):
-        return self.work.getwork()
+    def _handle_getwork(self, params, longpollid):
+        return self.work.getwork(params, longpollid)
