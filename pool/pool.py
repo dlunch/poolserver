@@ -73,7 +73,9 @@ class Pool(object):
                 if 'content-length' in headers:
                     data = file.read(int(headers['content-length']))
 
-            file.write(self._process_worker(headers, data))
+            result = self._process_worker(headers, data)
+            logger.debug('\nRequest: %s\nResponse:%s' % (data, result))
+            file.write(result)
         except:
             logger.error('Exception while processing request from client')
             logger.error(traceback.format_exc())
