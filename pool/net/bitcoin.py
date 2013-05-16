@@ -12,6 +12,7 @@ logger = logging.getLogger('Bitcoin')
 
 class Bitcoin(object):
     address_prefix = '\x00'
+
     class RPCError(Exception):
         pass
 
@@ -95,4 +96,5 @@ class Bitcoin(object):
 
     @classmethod
     def difficulty_to_target(cls, difficulty):
-        return (0xffff << (26*8)) / difficulty
+        # 208 == 26*8
+        return (0xffff << 208) / difficulty
