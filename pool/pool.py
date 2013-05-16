@@ -40,6 +40,10 @@ class Pool(object):
                 logger.error("Cannot connect to bitcoind: %r" % e)
             gevent.sleep(1)
 
+        logger.info('Running on %s, version %d' %
+                    (config.net, version['version']))
+        logger.info('Current difficulty: %f' % info['difficulty'])
+
         self.generation_pubkey =\
             self.net.address_to_pubkey(config.generation_address)
         self.target_difficulty =\
@@ -107,7 +111,6 @@ class Pool(object):
             logger.error(traceback.format_exc())
             return self._create_error_response(data['id'],
                                                'Internal Error', -32603)
-
 
     def _handle_getblocktemplate(self, params):
         return {}
