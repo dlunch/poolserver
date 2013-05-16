@@ -6,15 +6,13 @@ import hashlib
 import logging
 
 from .. import util
+from ..errors import RPCError
 
 logger = logging.getLogger('Bitcoin')
 
 
 class Bitcoin(object):
     address_prefix = '\x00'
-
-    class RPCError(Exception):
-        pass
 
     def __init__(self, host, port, username, password):
         if not host or not port or not username or not password:
@@ -67,7 +65,7 @@ class Bitcoin(object):
             result = e.read()
         result = json.loads(result)
         if result['error']:
-            raise self.RPCError(result['error'])
+            raise RPCError(result['error'])
         return result['result']
 
     def getblocktemplate(self):

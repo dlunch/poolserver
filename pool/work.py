@@ -5,8 +5,9 @@ import logging
 import random
 import string
 
-from transaction import Transaction
-from coinbase_transaction import CoinbaseTransaction
+from .transaction import Transaction
+from .coinbase_transaction import CoinbaseTransaction
+from .errors import RPCError
 import util
 
 logger = logging.getLogger('Bitcoin')
@@ -24,7 +25,7 @@ class Work(object):
             try:
                 self.block_template = self.net.getblocktemplate()
                 break
-            except net.RPCError as e:
+            except RPCError as e:
                 logger.error("Bitcoin RPCError:%r" % e)
             gevent.sleep(1)
         self._create_tx()
