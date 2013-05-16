@@ -75,6 +75,6 @@ class Work(object):
         block_template['longpollid'] = longpollid
         block_template['expires'] = 120
         block_template['submitold'] = True
-        block_template['longpollurl'] = config.longpoll_uri
+        block_template['longpolluri'] = config.longpoll_uri
 
         return block_template
