@@ -9,6 +9,7 @@ from .transaction import Transaction
 from .coinbase_transaction import CoinbaseTransaction
 from .errors import RPCError
 import util
+import config
 
 logger = logging.getLogger('Work')
 
@@ -40,26 +41,25 @@ class Work(object):
 
         return binascii.hexlify(target_bytes)
 
-    def getblocktemplate(self, params):
+    def getblocktemplate(self, params, uri):
         """For worker"""
 
-        longpollid = None
+        longpollid = 'init'
         if 'longpollid' in params:
             longpollid = params['longpollid']
-        if longpollid:
-            if longpollid in self.longpoll_events:
-                result = self.longpoll_events[longpollid].wait(60)
-                if not result:
-                    return {}
-            else:
-                while True:
-                    longpollid = ''.join(random.choice(string.ascii_lowercase +
-                                                       string.digits)
-                                         for n in range(10))
-                    if longpollid in self.longpoll_events:
-                        continue
-                    break
-                self.longpoll_events[longpollid] = gevent.event.Event()
+        if longpollid in self.longpoll_events:
+            result = self.longpoll_events[longpollid].wait(60)
+            if not result:
+                return {}
+        else:
+            while True:
+                longpollid = ''.join(random.choice(string.ascii_lowercase +
+                                                   string.digits)
+                                     for n in range(10))
+                if longpollid in self.longpoll_events:
+                    continue
+                break
+            self.longpoll_events[longpollid] = gevent.event.Event()
 
         block_template = {k: self.block_template[k]
                           for k in self.block_template
@@ -72,9 +72,9 @@ class Work(object):
         block_template['coinbasetxn'] = self.coinbase_tx.serialize()
 
         #Long polling extension
-        if longpollid:
-            block_template['longpollid'] = longpollid
-            block_template['expires'] = 120
-            block_template['submitold'] = True
+        block_template['longpollid'] = longpollid
+        block_template['expires'] = 120
+        block_template['submitold'] = True
+        block_template['longpollurl'] = config.longpoll_uri
 
         return block_template

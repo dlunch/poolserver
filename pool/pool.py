@@ -14,6 +14,12 @@ import config
 import work
 
 
+class JSONRPCException(Exception):
+    def __init__(self, code, message):
+        self.code = code
+        self.message = message
+
+
 class Pool(object):
     def __init__(self):
         if config.net == 'bitcoin':
@@ -58,30 +64,68 @@ class Pool(object):
                                             self._serve_worker)
         server.serve_forever()
 
+    def _get_extended_headers(self):
+        return {'X-Long-Polling': config.longpoll_uri}
+
+    def _read_http_request(self, file):
+        headers = {}
+        data = None
+        with gevent.Timeout(2):
+            first = True
+            while True:
+                line = file.readline()
+                if first:
+                    method, uri, version = line.split(' ', 2)
+                    first = False
+                if not line or line == '\r\n':
+                    break
+                if line.find(':') != -1:
+                    k, v = line.split(':', 1)
+                    headers[k.strip().lower()] = v.strip()
+            if 'content-length' in headers:
+                data = file.read(int(headers['content-length']))
+        return headers, uri, data
+
+    def _send_http_response(self, file, code, content, headers=None):
+        if code == 200:
+            message = 'OK'
+        elif code == 500:
+            message = 'Internal Server Error'
+        file.write('HTTP/1.1 %d %s\r\n' % (code, message))
+        file.write('Content-Length: %d\r\n' % len(content))
+        file.write('Content-Type: application/json\r\n')
+        if headers:
+            for i in headers:
+                file.write('%s: %s\r\n' % (i, headers[i]))
+        file.write('\r\n')
+        file.write(content)
+
     def _serve_worker(self, socket, remote):
         try:
             file = socket.makefile()
-            headers = {}
-            data = None
-            with gevent.Timeout(2):
-                while True:
-                    line = file.readline()
-                    if not line or line == '\r\n':
-                        break
-                    if line.find(':') != -1:
-                        k, v = line.split(':', 1)
-                        headers[k.strip().lower()] = v.strip()
-                if 'content-length' in headers:
-                    data = file.read(int(headers['content-length']))
+            headers, uri, data = self._read_http_request(file)
 
-            result = self._process_worker(headers, data)
+            try:
+                data = json.loads(data)
+            except:
+                raise JSONRPCException(-32700, 'Parse Error')
+            if 'method' not in data or\
+               'id' not in data or 'params' not in data:
+                raise JSONRPCException(-32600, 'Invalid Request')
+
+            headers, result = self._process_worker(headers, uri, data)
             logger.debug('\nRequest: %s\nResponse:%s' % (data, result))
-            file.write(result)
+            self._send_http_response(file, 200, result, headers)
+        except JSONRPCException as e:
+            id = data['id'] if 'id' in data else None
+            result = self._create_error_response(id, e.message, e.code)
+            self._send_http_response(file, 500, result)
         except:
-            logger.error('Exception while processing request from client')
+            logger.error('Exception while processing request')
             logger.error(traceback.format_exc())
-            file.write(self._create_error_response(None,
-                                                   'Internal Error', -32603))
+            result = self._create_error_response(None,
+                                                 'Internal Error', -32603)
+            self._send_http_response(file, 500, result)
         finally:
             logger.debug('Request process complete')
             file.close()
@@ -95,19 +139,10 @@ class Pool(object):
                                                 'message': error_message,
                                                 'data': None})
 
-    def _process_worker(self, headers, data):
-        try:
-            data = json.loads(data)
-        except:
-            return self._create_error_response(None, 'Parse Error', -32700)
-        if 'method' not in data or 'id' not in data or 'params' not in data:
-            return self._create_error_response(data['id'],
-                                               'Invalid Request', -32600)
-
+    def _process_worker(self, headers, uri, data):
         method_name = '_handle_' + data['method']
         if not hasattr(self, method_name):
-            return self._create_error_response(data['id'],
-                                               'Method Not Found', -32601)
+            raise JSONRPCException(-32601, 'Method Not Found')
         try:
             method = getattr(self, method_name)
             params = data['params']
@@ -116,15 +151,17 @@ class Pool(object):
                 for i in params:
                     new_params.update(i)
                 params = new_params
-            return self._create_response(data['id'], method(params))
+            response = self._create_response(data['id'], method(params, uri))
+            headers = self._get_extended_headers()
+            return headers, response
         except:
             logger.error('Exception while processing request')
             logger.error(traceback.format_exc())
-            return self._create_error_response(data['id'],
-                                               'Internal Error', -32603)
 
-    def _handle_getblocktemplate(self, params):
-        return self.work.getblocktemplate(params)
+            raise JSONRPCException(-32603, 'Internal Error')
 
-    """def _handle_getwork(self, params):
+    def _handle_getblocktemplate(self, params, uri):
+        return self.work.getblocktemplate(params, uri)
+
+    """def _handle_getwork(self, params, uri):
         return self.work.getwork(params)"""
