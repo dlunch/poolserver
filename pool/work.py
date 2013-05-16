@@ -10,7 +10,7 @@ from .coinbase_transaction import CoinbaseTransaction
 from .errors import RPCError
 import util
 
-logger = logging.getLogger('Bitcoin')
+logger = logging.getLogger('Work')
 
 
 class Work(object):
@@ -40,14 +40,18 @@ class Work(object):
 
         return binascii.hexlify(target_bytes)
 
-    def getblocktemplate(self, params, longpollid):
+    def getblocktemplate(self, params):
         """For worker"""
 
+        longpollid = None
+        if 'longpollid' in params:
+            longpollid = params['longpollid']
         if longpollid and longpollid in self.longpoll_events:
             result = self.longpoll_events[longpollid].wait(60)
             if not result:
                 return {}
         else:
+            logger.debug(longpollid)
             while True:
                 longpollid = ''.join(random.choice(string.ascii_lowercase +
                                                    string.digits)

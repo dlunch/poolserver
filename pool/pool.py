@@ -104,24 +104,27 @@ class Pool(object):
             return self._create_error_response(data['id'],
                                                'Invalid Request', -32600)
 
-        method = getattr(self, '_handle_' + data['method'])
-        if not method:
+        method_name = '_handle_' + data['method']
+        if not hasattr(self, method_name):
             return self._create_error_response(data['id'],
                                                'Method Not Found', -32601)
         try:
-            longpollid = None
-            if 'longpollid' in data:
-                longpollid = data['longpollid']
-            return self._create_response(data['id'],
-                                         method(data['params'], longpollid))
+            method = getattr(self, method_name)
+            params = data['params']
+            if type(params) == list:
+                new_params = {}
+                for i in params:
+                    new_params.update(i)
+                params = new_params
+            return self._create_response(data['id'], method(params))
         except:
             logger.error('Exception while processing request')
             logger.error(traceback.format_exc())
             return self._create_error_response(data['id'],
                                                'Internal Error', -32603)
 
-    def _handle_getblocktemplate(self, params, longpollid):
-        return self.work.getblocktemplate(params, longpollid)
+    def _handle_getblocktemplate(self, params):
+        return self.work.getblocktemplate(params)
 
-    def _handle_getwork(self, params, longpollid):
-        return self.work.getwork(params, longpollid)
+    """def _handle_getwork(self, params):
+        return self.work.getwork(params)"""
