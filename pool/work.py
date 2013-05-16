@@ -51,7 +51,6 @@ class Work(object):
             if not result:
                 return {}
         else:
-            logger.debug(longpollid)
             while True:
                 longpollid = ''.join(random.choice(string.ascii_lowercase +
                                                    string.digits)
