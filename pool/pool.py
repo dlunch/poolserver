@@ -113,4 +113,7 @@ class Pool(object):
                                                'Internal Error', -32603)
 
     def _handle_getblocktemplate(self, params):
-        return {}
+        return self.work.getblocktemplate()
+
+    def _handle_getwork(self, params):
+        return self.work.getwork()
