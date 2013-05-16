@@ -7,7 +7,7 @@ import string
 
 from .transaction import Transaction
 from .coinbase_transaction import CoinbaseTransaction
-from .errors import RPCError
+from .errors import RPCError, RPCQuitError
 import util
 import config
 
@@ -50,7 +50,7 @@ class Work(object):
         if longpollid in self.longpoll_events:
             result = self.longpoll_events[longpollid].wait(60)
             if not result:
-                return {}
+                raise RPCQuitError()
         else:
             while True:
                 longpollid = ''.join(random.choice(string.ascii_lowercase +

@@ -12,6 +12,7 @@ logger = logging.getLogger('Pool')
 
 import config
 import work
+from errors import RPCQuitError
 
 
 class JSONRPCException(Exception):
@@ -120,6 +121,8 @@ class Pool(object):
             id = data['id'] if 'id' in data else None
             result = self._create_error_response(id, e.message, e.code)
             self._send_http_response(file, 500, result)
+        except RPCQuitError:
+            return
         except:
             logger.error('Exception while processing request')
             logger.error(traceback.format_exc())
@@ -154,6 +157,8 @@ class Pool(object):
             response = self._create_response(data['id'], method(params, uri))
             headers = self._get_extended_headers()
             return headers, response
+        except RPCQuitError:
+            raise
         except:
             logger.error('Exception while processing request')
             logger.error(traceback.format_exc())
