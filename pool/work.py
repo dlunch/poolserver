@@ -46,19 +46,20 @@ class Work(object):
         longpollid = None
         if 'longpollid' in params:
             longpollid = params['longpollid']
-        if longpollid and longpollid in self.longpoll_events:
-            result = self.longpoll_events[longpollid].wait(60)
-            if not result:
-                return {}
-        else:
-            while True:
-                longpollid = ''.join(random.choice(string.ascii_lowercase +
-                                                   string.digits)
-                                     for n in range(10))
-                if longpollid in self.longpoll_events:
-                    continue
-                break
-            self.longpoll_events[longpollid] = gevent.event.Event()
+        if longpollid:
+            if longpollid in self.longpoll_events:
+                result = self.longpoll_events[longpollid].wait(60)
+                if not result:
+                    return {}
+            else:
+                while True:
+                    longpollid = ''.join(random.choice(string.ascii_lowercase +
+                                                       string.digits)
+                                         for n in range(10))
+                    if longpollid in self.longpoll_events:
+                        continue
+                    break
+                self.longpoll_events[longpollid] = gevent.event.Event()
 
         block_template = {k: self.block_template[k]
                           for k in self.block_template
@@ -71,8 +72,9 @@ class Work(object):
         block_template['coinbasetxn'] = self.coinbase_tx.serialize()
 
         #Long polling extension
-        block_template['longpollid'] = longpollid
-        block_template['expires'] = 120
-        block_template['submitold'] = True
+        if longpollid:
+            block_template['longpollid'] = longpollid
+            block_template['expires'] = 120
+            block_template['submitold'] = True
 
         return block_template
