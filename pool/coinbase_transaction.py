@@ -3,6 +3,7 @@ import binascii
 
 import util
 from transaction import Transaction
+import config
 
 class CoinbaseTransaction(object):
     def __init__(self, block_template, generation_pubkey):
@@ -16,6 +17,9 @@ class CoinbaseTransaction(object):
         if 'coinbaseflags' in block_template:
             data = binascii.unhexlify(block_template['coinbaseflags'])
             coinbase_script += data
+
+        coinbase_script += '\x00\x00\x00\x00'  # Extranonce1
+        coinbase_script += '\x00' * config.extranonce2_size  # Extranonce2
 
         if 'coinbasevalue' in block_template:
             coinbase_value = block_template['coinbasevalue']
@@ -38,7 +42,7 @@ class CoinbaseTransaction(object):
         result += output_script
         result += '\x00\x00\x00\x00' # Lock time
 
-        self.raw_tx = binascii.hexlify(result)
+        self.raw_tx = result
 
     def serialize(self):
-        return {'data': self.raw_tx}
+        return {'data': binascii.hexlify(self.raw_tx)}

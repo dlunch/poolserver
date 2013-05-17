@@ -4,12 +4,14 @@ import binascii
 import logging
 import random
 import string
+import struct
 
 from .transaction import Transaction
 from .coinbase_transaction import CoinbaseTransaction
 import util
 import config
 from .errors import RPCError
+from .merkletree import MerkleTree
 
 logger = logging.getLogger('Work')
 
@@ -35,6 +37,7 @@ class Work(object):
         self.coinbase_tx = CoinbaseTransaction(
             self.block_template, self.generation_pubkey)
         self.tx = [Transaction(x) for x in self.block_template['transactions']]
+        self.merkle = MerkleTree([x.raw_tx for x in self.tx])
 
     def _serialize_target(self):
         target_bytes = util.long_to_bytes(self.target, 32)
@@ -76,3 +79,25 @@ class Work(object):
         block_template['longpolluri'] = config.longpoll_uri
 
         return block_template
+
+    def get_stratum_work(self):
+        result = []
+        result.append('StratumJob')  # Job id
+        prevblockhash = binascii.unhexlify(
+            self.block_template['previousblockhash'])
+        result.append(binascii.hexlify(prevblockhash[::-1]))
+
+        coinbase_data = bytearray(self.coinbase_tx.raw_tx)
+        orig_len = coinbase_data[41]
+        firstpart_len = orig_len - 4 - config.extranonce2_size
+        result.append(binascii.hexlify(coinbase_data[:42+firstpart_len]))
+        result.append(binascii.hexlify(coinbase_data[42+orig_len:]))
+        result.append([binascii.hexlify(x) for x in self.merkle.branches])
+        result.append(binascii.hexlify(
+                      struct.pack('>I', self.block_template['version'])))
+        result.append(self.block_template['bits'])
+        result.append(binascii.hexlify(
+                      struct.pack('>I', self.block_template['curtime'])))
+        result.append(True)
+
+        return result
