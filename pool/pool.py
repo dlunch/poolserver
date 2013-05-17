@@ -16,7 +16,7 @@ import work
 from errors import RPCQuitError
 
 
-class JSONRPCException(Exception):
+class JSONRPCError(Exception):
     def __init__(self, code, message):
         self.code = code
         self.message = message
@@ -130,15 +130,15 @@ class Pool(object):
             try:
                 data = json.loads(data)
             except:
-                raise JSONRPCException(-32700, 'Parse Error')
+                raise JSONRPCError(-32700, 'Parse Error')
             if 'method' not in data or\
                'id' not in data or 'params' not in data:
-                raise JSONRPCException(-32600, 'Invalid Request')
+                raise JSONRPCError(-32600, 'Invalid Request')
 
             headers, result = self._process_worker(headers, uri, data)
             logger.debug('\nRequest: %s\nResponse:%s' % (data, result))
             self._send_http_response(file, 200, result, headers)
-        except JSONRPCException as e:
+        except JSONRPCError as e:
             id = data['id'] if data and 'id' in data else None
             result = self._create_error_response(id, e.message, e.code)
             self._send_http_response(file, 500, result)
@@ -167,7 +167,7 @@ class Pool(object):
     def _process_worker(self, headers, uri, data):
         method_name = '_handle_' + data['method']
         if not hasattr(self, method_name):
-            raise JSONRPCException(-32601, 'Method Not Found')
+            raise JSONRPCError(-32601, 'Method Not Found')
         try:
             method = getattr(self, method_name)
             params = data['params']
@@ -185,7 +185,7 @@ class Pool(object):
             logger.error('Exception while processing request')
             logger.error(traceback.format_exc())
 
-            raise JSONRPCException(-32603, 'Internal Error')
+            raise JSONRPCError(-32603, 'Internal Error')
 
     def _handle_getblocktemplate(self, params, uri):
         return self.work.getblocktemplate(params, uri)
