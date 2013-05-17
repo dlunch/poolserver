@@ -210,5 +210,7 @@ class Pool(object):
                 lasttime = time.time()
             with gevent.Timeout(60, False):
                 line = file.readline()
+                if not line:
+                    break
 
         logger.debug('Stratum connection terminated')
