@@ -9,6 +9,7 @@ from .transaction import Transaction
 from .coinbase_transaction import CoinbaseTransaction
 import util
 import config
+from .errors import RPCError
 
 logger = logging.getLogger('Work')
 
