@@ -80,19 +80,16 @@ class Pool(object):
         data = None
         uri = None
         with gevent.Timeout(10, False):
-            first = True
             while True:
                 line = file.readline()
-                if not line:
+                if not line or line == '\r\n':
                     break
                 if line[0] == '{':
                     #Stratum
                     raise IsStratumConnection(line)
-                if first:
+                if not uri:
                     method, uri, version = line.split(' ', 2)
-                    first = False
-                if not line or line == '\r\n':
-                    break
+                    continue
                 if line.find(':') != -1:
                     k, v = line.split(':', 1)
                     headers[k.strip().lower()] = v.strip()
