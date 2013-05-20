@@ -37,12 +37,33 @@ class Work(object):
         self.coinbase_tx = CoinbaseTransaction(
             self.block_template, self.generation_pubkey)
         self.tx = [Transaction(x) for x in self.block_template['transactions']]
-        self.merkle = MerkleTree([x.raw_tx for x in self.tx])
+        self.merkle = MerkleTree([x.raw_tx for x in
+                                  self.tx + [self.coinbase_tx]])
 
     def _serialize_target(self):
         target_bytes = util.long_to_bytes(self.target, 32)
 
         return binascii.hexlify(target_bytes)
+
+    def getwork(self, params, uri):
+        block_header = struct.pack('<I', self.block_template['version']) +\
+            binascii.unhexlify(self.block_template['previousblockhash']) +\
+            self.merkle.root +\
+            struct.pack('<I', self.block_template['curtime']) +\
+            binascii.unhexlify(self.block_template['bits']) +\
+            '\x00\x00\x00\x00' + \
+            ("\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x80")
+
+        # To little endian
+        block_header = ''.join([block_header[x:x+4][::-1] for x in range(0, len(block_header), 4)])
+
+        #TODO midstate, hash1 (deprecated)
+        return {'data': binascii.hexlify(block_header),
+                'target': self._serialize_target()
+}
 
     def getblocktemplate(self, params, uri):
         """For worker"""

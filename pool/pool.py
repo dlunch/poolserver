@@ -187,8 +187,8 @@ class Pool(object):
     def _handle_getblocktemplate(self, params, uri):
         return self.work.getblocktemplate(params, uri)
 
-    """def _handle_getwork(self, params, uri):
-        return self.work.getwork(params)"""
+    def _handle_getwork(self, params, uri):
+        return self.work.getwork(params, uri)
 
     def _handle_stratum(self, file, firstline):
         logger.debug('Handling stratum connection')
