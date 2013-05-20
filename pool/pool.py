@@ -116,14 +116,8 @@ class Pool(object):
         if content:
             file.write(content)
 
-    def _serve_worker(self, socket, remote):
-        logger.debug('Connection from %s:%d' % remote)
+    def _process_request(self, headers, uri, data):
         try:
-            file = socket.makefile()
-            headers, uri, data = self._read_http_request(file)
-            if not data:
-                raise Exception()
-
             try:
                 data = json.loads(data)
             except:
@@ -132,18 +126,29 @@ class Pool(object):
                'id' not in data or 'params' not in data:
                 raise JSONRPCError(-32600, 'Invalid Request')
 
-            headers, result = self._process_worker(headers, uri, data)
-            logger.debug('\nRequest: %s\nResponse:%s' % (data, result))
-            self._send_http_response(file, 200, result, headers)
+            headers, response = self._process_worker(headers, uri, data)
+            return 200, headers, response
         except JSONRPCError as e:
             id = data['id'] if data and 'id' in data else None
-            result = self._create_error_response(id, e.message, e.code)
-            self._send_http_response(file, 500, result)
+            return (500, None,
+                    self._create_error_response(id, e.message, e.code))
+
+    def _serve_worker(self, socket, remote):
+        logger.debug('Connection from %s:%d' % remote)
+        try:
+            file = socket.makefile()
+            headers, uri, data = self._read_http_request(file)
+
+            code, headers, result = self._process_request(headers, uri, data)
+            logger.debug('\nRequest: %s\nResponse:%s' % (data, result))
+            self._send_http_response(file, code, result, headers)
         except RPCQuitError:
             return
         except IsStratumConnection as e:
             self._handle_stratum(file, e.firstline)
         except:
+            logger.debug('Request handle exception')
+            logger.debug(traceback.format_exc())
             self._send_http_response(file, 400, None)
         finally:
             logger.debug('Request process complete')
@@ -190,22 +195,24 @@ class Pool(object):
     def _handle_getwork(self, params, uri):
         return self.work.getwork(params, uri)
 
+    def _send_stratum_message(self, file, message):
+        logger.debug('Stratum send: %s' % message)
+        file.write(message + '\n')
+        file.flush()
+
     def _handle_stratum(self, file, firstline):
         logger.debug('Handling stratum connection')
         line = firstline
         lasttime = time.time() - 60
         while True:
             logger.debug('Stratum receive: %s' % line)
-            try:
-                data = json.dumps(line)
-            except:
-                break
+            _, _, response = self._process_request(None, None, line)
+            self._send_stratum_message(file, response)
+
             if time.time() - lasttime >= 59:
                 request = self._create_request('mining.notify',
                                                self.work.get_stratum_work())
-                logger.debug('Stratum send: %s' % request)
-                file.write(request + '\n')
-                file.flush()
+                self._send_stratum_message(file, request)
                 lasttime = time.time()
             with gevent.Timeout(60, False):
                 line = file.readline()
