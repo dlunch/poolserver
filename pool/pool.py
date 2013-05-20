@@ -198,7 +198,7 @@ class Pool(object):
             try:
                 data = json.dumps(line)
             except:
-                pass
+                break
             if time.time() - lasttime >= 59:
                 request = self._create_request('mining.notify',
                                                self.work.get_stratum_work())
