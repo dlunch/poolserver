@@ -43,6 +43,9 @@ class Work(object):
 
         return binascii.hexlify(target_bytes)
 
+    def _get_work_id(self):
+        return binascii.hexlify(struct.pack('<I', self.seq ^ 0xdeadbeef))
+
     def getwork(self, params, uri):
         if uri == config.longpoll_uri:
             gevent.sleep(60)
@@ -73,8 +76,7 @@ class Work(object):
             longpollid = params['longpollid']
         if longpollid != 'init' or uri == config.longpoll_uri:
             gevent.sleep(60)
-            longpollid = binascii.hexlify(
-                struct.pack('<I', self.seq ^ 0xdeadbeef))
+            longpollid = self._get_work_id()
         block_template = {k: self.block_template[k]
                           for k in self.block_template
                           if k not in
@@ -95,7 +97,7 @@ class Work(object):
 
     def get_stratum_work(self):
         result = []
-        result.append('StratumJob')  # Job id
+        result.append(self._get_work_id())  # Job id
         prevblockhash = binascii.unhexlify(
             self.block_template['previousblockhash'])
         result.append(binascii.hexlify(prevblockhash[::-1]))
