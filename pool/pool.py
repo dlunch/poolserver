@@ -4,7 +4,6 @@ import gevent.server
 gevent.monkey.patch_all()
 
 import traceback
-import json
 import time
 import logging
 logging.basicConfig(level=logging.DEBUG,
@@ -13,18 +12,8 @@ logger = logging.getLogger('Pool')
 
 import config
 import work
-from errors import RPCQuitError
-
-
-class JSONRPCError(Exception):
-    def __init__(self, code, message):
-        self.code = code
-        self.message = message
-
-
-class IsStratumConnection(Exception):
-    def __init__(self, firstline):
-        self.firstline = firstline
+import jsonrpc
+from errors import RPCQuitError, IsStratumConnection
 
 
 class Pool(object):
@@ -75,73 +64,16 @@ class Pool(object):
         return {'X-Long-Polling': config.longpoll_uri,
                 'X-Stratum': 'stratum+tcp://%s' % original_headers['host']}
 
-    def _read_http_request(self, file):
-        headers = {}
-        data = None
-        uri = None
-        with gevent.Timeout(10, False):
-            while True:
-                line = file.readline()
-                if not line or line == '\r\n':
-                    break
-                if line[0] == '{':
-                    #Stratum
-                    raise IsStratumConnection(line)
-                if not uri:
-                    method, uri, version = line.split(' ', 2)
-                    continue
-                if line.find(':') != -1:
-                    k, v = line.split(':', 1)
-                    headers[k.strip().lower()] = v.strip()
-            if 'content-length' in headers:
-                data = file.read(int(headers['content-length']))
-        return headers, uri, data
-
-    def _send_http_response(self, file, code, content, headers=None):
-        if code == 200:
-            message = 'OK'
-        elif code == 500:
-            message = 'Internal Server Error'
-        elif code == 400:
-            message = 'Bad Request'
-        file.write('HTTP/1.1 %d %s\r\n' % (code, message))
-        file.write('Server: dlunchpool\r\n')
-        if content:
-            file.write('Content-Length: %d\r\n' % len(content))
-            file.write('Content-Type: application/json\r\n')
-        if headers:
-            for i in headers:
-                file.write('%s: %s\r\n' % (i, headers[i]))
-        file.write('\r\n')
-        if content:
-            file.write(content)
-
-    def _process_request(self, headers, uri, data):
-        try:
-            try:
-                data = json.loads(data)
-            except:
-                raise JSONRPCError(-32700, 'Parse Error')
-            if 'method' not in data or\
-               'id' not in data or 'params' not in data:
-                raise JSONRPCError(-32600, 'Invalid Request')
-
-            headers, response = self._process_worker(headers, uri, data)
-            return 200, headers, response
-        except JSONRPCError as e:
-            id = data['id'] if data and 'id' in data else None
-            return (500, None,
-                    self._create_error_response(id, e.message, e.code))
-
     def _serve_worker(self, socket, remote):
         logger.debug('Connection from %s:%d' % remote)
         try:
             file = socket.makefile()
-            headers, uri, data = self._read_http_request(file)
+            headers, uri, data = jsonrpc.read_http_request(file)
 
-            code, headers, result = self._process_request(headers, uri, data)
+            code, result = jsonrpc.process_request(headers, uri, data, self)
             logger.debug('\nRequest: %s\nResponse:%s' % (data, result))
-            self._send_http_response(file, code, result, headers)
+            jsonrpc.send_http_response(file, code, result,
+                                       self._get_extended_headers(headers))
         except RPCQuitError:
             return
         except IsStratumConnection as e:
@@ -149,45 +81,11 @@ class Pool(object):
         except:
             logger.debug('Request handle exception')
             logger.debug(traceback.format_exc())
-            self._send_http_response(file, 400, None)
+            jsonrpc.send_http_response(file, 400, None)
         finally:
             logger.debug('Request process complete')
             file.close()
             socket.close()
-
-    def _create_request(self, method, params):
-        return json.dumps({'id': 0, 'method': method, 'params': params})
-
-    def _create_response(self, id, result, error=None):
-        return json.dumps({'id': id, 'error': error, 'result': result})
-
-    def _create_error_response(self, id, error_message, error_code):
-        return self._create_response(id, None, {'code': error_code,
-                                                'message': error_message,
-                                                'data': None})
-
-    def _process_worker(self, headers, uri, data):
-        method_name = '_handle_' + data['method']
-        if not hasattr(self, method_name):
-            raise JSONRPCError(-32601, 'Method Not Found')
-        try:
-            method = getattr(self, method_name)
-            params = data['params']
-            if type(params) == list:
-                new_params = {}
-                for i in params:
-                    new_params.update(i)
-                params = new_params
-            response = self._create_response(data['id'], method(params, uri))
-            headers = self._get_extended_headers(headers)
-            return headers, response
-        except RPCQuitError:
-            raise
-        except:
-            logger.error('Exception while processing request')
-            logger.error(traceback.format_exc())
-
-            raise JSONRPCError(-32603, 'Internal Error')
 
     def _handle_getblocktemplate(self, params, uri):
         return self.work.getblocktemplate(params, uri)
@@ -206,12 +104,12 @@ class Pool(object):
         lasttime = time.time() - 60
         while True:
             logger.debug('Stratum receive: %s' % line)
-            _, _, response = self._process_request(None, None, line)
+            _, response = jsonrpc.process_request(None, None, line, self)
             self._send_stratum_message(file, response)
 
             if time.time() - lasttime >= 59:
-                request = self._create_request('mining.notify',
-                                               self.work.get_stratum_work())
+                request = jsonrpc.create_request('mining.notify',
+                                                 self.work.get_stratum_work())
                 self._send_stratum_message(file, request)
                 lasttime = time.time()
             with gevent.Timeout(60, False):
