@@ -195,6 +195,7 @@ class Pool(object):
         line = firstline
         lasttime = time.time() - 60
         while True:
+            logger.debug('Stratum receive: %s' % line)
             try:
                 data = json.dumps(line)
             except:
@@ -202,6 +203,7 @@ class Pool(object):
             if time.time() - lasttime >= 59:
                 request = self._create_request('mining.notify',
                                                self.work.get_stratum_work())
+                logger.debug('Stratum send: %s' % request)
                 file.write(request + '\n')
                 file.flush()
                 lasttime = time.time()
