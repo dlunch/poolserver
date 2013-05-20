@@ -1,9 +1,6 @@
 import gevent
-import gevent.event
 import binascii
 import logging
-import random
-import string
 import struct
 
 from .transaction import Transaction
@@ -18,10 +15,10 @@ logger = logging.getLogger('Work')
 
 class Work(object):
     def __init__(self, net, target, generation_pubkey):
+        self.seq = 0
         self.net = net
         self.target = target
         self.generation_pubkey = generation_pubkey
-        self.longpoll_events = {}
 
     def refresh_work(self):
         while True:
@@ -31,6 +28,7 @@ class Work(object):
             except RPCError as e:
                 logger.error("Bitcoin RPCError:%r" % e)
             gevent.sleep(1)
+        self.seq += 1
         self._create_tx()
 
     def _create_tx(self):
@@ -46,6 +44,8 @@ class Work(object):
         return binascii.hexlify(target_bytes)
 
     def getwork(self, params, uri):
+        if uri == config.longpoll_uri:
+            gevent.sleep(60)
         block_header = struct.pack('<I', self.block_template['version']) +\
             binascii.unhexlify(self.block_template['previousblockhash']) +\
             self.merkle.root +\
@@ -58,12 +58,12 @@ class Work(object):
             "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x80")
 
         # To little endian
-        block_header = ''.join([block_header[x:x+4][::-1] for x in range(0, len(block_header), 4)])
+        block_header = ''.join([block_header[x:x+4][::-1]
+                               for x in range(0, len(block_header), 4)])
 
         #TODO midstate, hash1 (deprecated)
         return {'data': binascii.hexlify(block_header),
-                'target': self._serialize_target()
-}
+                'target': self._serialize_target()}
 
     def getblocktemplate(self, params, uri):
         """For worker"""
@@ -71,18 +71,10 @@ class Work(object):
         longpollid = 'init'
         if 'longpollid' in params:
             longpollid = params['longpollid']
-        if longpollid in self.longpoll_events:
-            self.longpoll_events[longpollid].wait(60)
-        else:
-            while True:
-                longpollid = ''.join(random.choice(string.ascii_lowercase +
-                                                   string.digits)
-                                     for n in range(10))
-                if longpollid in self.longpoll_events:
-                    continue
-                break
-            self.longpoll_events[longpollid] = gevent.event.Event()
-
+        if longpollid != 'init' or uri == config.longpoll_uri:
+            gevent.sleep(60)
+            longpollid = binascii.hexlify(
+                struct.pack('<I', self.seq ^ 0xdeadbeef))
         block_template = {k: self.block_template[k]
                           for k in self.block_template
                           if k not in
