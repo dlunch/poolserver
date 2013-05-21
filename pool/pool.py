@@ -70,7 +70,7 @@ class Pool(object):
             file = socket.makefile()
             headers, uri, data = jsonrpc.read_http_request(file)
 
-            logger.debug('\nRequest: %s' % (result))
+            logger.debug('\nRequest: %s' % (data))
             code, result = jsonrpc.process_request(headers, uri, data,
                                                    self.work)
             logger.debug('\nResponse:%s' % (result))

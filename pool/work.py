@@ -44,9 +44,7 @@ class Work(object):
                                   self.tx + [self.coinbase_tx]])
 
     def _serialize_target(self):
-        target_bytes = util.long_to_bytes(self.target, 32)
-
-        return binascii.hexlify(target_bytes)
+        return util.long_to_bytes(self.target, 32)
 
     def _get_work_id(self):
         return binascii.hexlify(struct.pack('<I', self.seq ^ 0xdeadbeef))
@@ -70,7 +68,7 @@ class Work(object):
         # To little endian
         block_header = ''.join([block_header[x:x+4][::-1]
                                for x in range(0, len(block_header), 4)])
-        target = self._serialize_target()[::-1]
+        target = binascii.hexlify(self._serialize_target()[::-1])
 
         #TODO midstate, hash1 (deprecated)
         return {'data': binascii.hexlify(block_header),
@@ -92,7 +90,7 @@ class Work(object):
                           if k not in
                           ['coinbasevalue', 'coinbaseaux', 'coinbaseflags']}
 
-        block_template['target'] = self._serialize_target()
+        block_template['target'] = binascii.hexlify(self._serialize_target())
         block_template['mutable'] = ["coinbase/append", "submit/coinbase"]
         block_template['transactions'] = [x.serialize() for x in self.tx]
         block_template['coinbasetxn'] = self.coinbase_tx.serialize()
