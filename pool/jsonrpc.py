@@ -81,7 +81,7 @@ def process_request(headers, uri, data, handler):
            'id' not in data or 'params' not in data:
             raise JSONRPCError(-32600, 'Invalid Request')
 
-        method_name = '_handle_' + data['method']
+        method_name = data['method'].replace('.', '_')
         if not hasattr(handler, method_name):
             raise JSONRPCError(-32601, 'Method Not Found')
         method = getattr(handler, method_name)

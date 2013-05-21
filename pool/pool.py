@@ -4,7 +4,6 @@ import gevent.server
 gevent.monkey.patch_all()
 
 import traceback
-import time
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
@@ -13,6 +12,7 @@ logger = logging.getLogger('Pool')
 import config
 import work
 import jsonrpc
+from stratum import Stratum
 from errors import RPCQuitError, IsStratumConnection
 
 
@@ -70,7 +70,8 @@ class Pool(object):
             file = socket.makefile()
             headers, uri, data = jsonrpc.read_http_request(file)
 
-            code, result = jsonrpc.process_request(headers, uri, data, self)
+            code, result = jsonrpc.process_request(headers, uri, data,
+                                                   self.work)
             logger.debug('\nRequest: %s\nResponse:%s' % (data, result))
             jsonrpc.send_http_response(file, code, result,
                                        self._get_extended_headers(headers))
@@ -87,34 +88,10 @@ class Pool(object):
             file.close()
             socket.close()
 
-    def _handle_getblocktemplate(self, params, uri):
-        return self.work.getblocktemplate(params, uri)
-
-    def _handle_getwork(self, params, uri):
-        return self.work.getwork(params, uri)
-
-    def _send_stratum_message(self, file, message):
-        logger.debug('Stratum send: %s' % message)
-        file.write(message + '\n')
-        file.flush()
-
     def _handle_stratum(self, file, firstline):
         logger.debug('Handling stratum connection')
-        line = firstline
-        lasttime = time.time() - 60
-        while True:
-            logger.debug('Stratum receive: %s' % line)
-            _, response = jsonrpc.process_request(None, None, line, self)
-            self._send_stratum_message(file, response)
+        stratum = Stratum(file, self.work)
 
-            if time.time() - lasttime >= 59:
-                request = jsonrpc.create_request('mining.notify',
-                                                 self.work.get_stratum_work())
-                self._send_stratum_message(file, request)
-                lasttime = time.time()
-            with gevent.Timeout(60, False):
-                line = file.readline()
-                if not line:
-                    break
+        stratum.handle(firstline)
 
         logger.debug('Stratum connection terminated')
