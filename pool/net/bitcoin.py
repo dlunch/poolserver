@@ -1,4 +1,8 @@
-import urllib2
+try:
+    from urllib.request import Request, urlopen
+    from urllib.error import HTTPError
+except:
+    from urllib2 import Request, HTTPError, urlopen
 import os
 import json
 import base64
@@ -7,12 +11,13 @@ import logging
 
 from .. import util
 from ..errors import RPCError
+from ..compat import str, bytes
 
 logger = logging.getLogger('Bitcoin')
 
 
 class Bitcoin(object):
-    address_prefix = '\x00'
+    address_prefix = b'\x00'
 
     def __init__(self, host, port, username, password):
         if not host or not port or not username or not password:
@@ -38,8 +43,9 @@ class Bitcoin(object):
                     port = v
 
         self.rpc_host = 'http://%s:%r' % (host, port)
-        self.auth = base64.encodestring('%s:%s' % (username, password))\
-                          .replace('\n', '')
+        self.auth = base64.encodestring(bytes('%s:%s' % (username, password),
+                                        'ascii'))
+        self.auth = str(self.auth, 'ascii').replace('\n', '')
 
     def _get_config_file(self):
         return os.path.join(os.path.expanduser('~/.bitcoin'), 'bitcoin.conf')
@@ -52,18 +58,18 @@ class Bitcoin(object):
                                    'method': method,
                                    'params': params})
 
-        req = urllib2.Request(self.rpc_host)
+        req = Request(self.rpc_host)
         req.add_header("Authorization", "Basic %s" % self.auth)
         req.add_header("Content-Type", "text/plain")
-        req.add_data(request_data)
+        req.add_data(bytes(request_data, 'ascii'))
 
         try:
-            file = urllib2.urlopen(req)
+            file = urlopen(req)
             result = file.read()
             file.close()
-        except urllib2.HTTPError as e:
+        except HTTPError as e:
             result = e.read()
-        result = json.loads(result)
+        result = json.loads(str(result, 'ascii'))
         if result['error']:
             raise RPCError(result['error'])
         return result['result']
@@ -80,7 +86,7 @@ class Bitcoin(object):
     @classmethod
     def address_to_pubkey(cls, address):
         data = util.base58_decode(address, 25)
-        if data[0] != cls.address_prefix:
+        if data[0] != cls.address_prefix[0]:
             raise Exception("Unknown address type")
         return data[1:21]
 
@@ -95,4 +101,4 @@ class Bitcoin(object):
     @classmethod
     def difficulty_to_target(cls, difficulty):
         # 208 == 26*8
-        return (0xffff << 208) / difficulty
+        return int((0xffff << 208) / difficulty)

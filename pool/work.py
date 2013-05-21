@@ -1,15 +1,15 @@
 import gevent
 import gevent.event
-import binascii
 import logging
 import struct
 
 from .transaction import Transaction
 from .coinbase_transaction import CoinbaseTransaction
-import util
-import config
+from . import util
+from . import config
 from .errors import RPCError
 from .merkletree import MerkleTree
+from .compat import str
 
 logger = logging.getLogger('Work')
 
@@ -64,7 +64,7 @@ class Work(object):
 
     def _get_work_id(self):
         self.seq += 1
-        return binascii.hexlify(struct.pack('<I', self.seq ^ 0xdeadbeef))
+        return util.b2h(struct.pack('<I', self.seq ^ 0xdeadbeef))
 
     def getwork(self, params, uri):
         if uri == config.longpoll_uri:
@@ -72,31 +72,31 @@ class Work(object):
             self.add_longpoll_event(event)
             event.wait()
         coinbase_tx = self._create_coinbase_tx(
-            binascii.unhexlify(self._get_work_id()), '')
+            util.h2b(self._get_work_id()), b'')
         merkle = self._create_merkle(coinbase_tx)
-        prevblockhash = binascii.unhexlify(
+        prevblockhash = util.h2b(
             self.block_template['previousblockhash'])[::-1]
-        prevblockhash = ''.join([prevblockhash[x:x+4]
-                                for x in range(0, len(prevblockhash), 4)])
+        prevblockhash = b''.join([prevblockhash[x:x+4]
+                                 for x in range(0, len(prevblockhash), 4)])
 
         block_header = struct.pack('<I', self.block_template['version']) +\
             prevblockhash +\
             merkle.root +\
             struct.pack('<I', self.block_template['curtime']) +\
-            binascii.unhexlify(self.block_template['bits'])[::-1] +\
-            '\x00\x00\x00\x00' + \
-            ("\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x80")
+            util.h2b(self.block_template['bits'])[::-1] +\
+            b'\x00\x00\x00\x00' + \
+            (b"\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x80")
 
         # To little endian
-        block_header = ''.join([block_header[x:x+4][::-1]
-                               for x in range(0, len(block_header), 4)])
-        target = binascii.hexlify(self._serialize_target()[::-1])
-
+        block_header = b''.join([block_header[x:x+4][::-1]
+                                for x in range(0, len(block_header), 4)])
+        target = util.b2h(self._serialize_target()[::-1])
+        block_header = util.b2h(block_header)
         #TODO midstate, hash1 (deprecated)
-        return {'data': binascii.hexlify(block_header),
+        return {'data': block_header,
                 'target': target}
 
     def getblocktemplate(self, params, uri):
@@ -110,13 +110,13 @@ class Work(object):
             self.add_longpoll_event(event)
             event.wait()
             longpollid = self._get_work_id()
-        coinbase_tx = self._create_coinbase_tx('', '')
+        coinbase_tx = self._create_coinbase_tx(b'', b'')
         block_template = {k: self.block_template[k]
                           for k in self.block_template
                           if k not in
                           ['coinbasevalue', 'coinbaseaux', 'coinbaseflags']}
 
-        block_template['target'] = binascii.hexlify(self._serialize_target())
+        block_template['target'] = util.b2h(self._serialize_target())
         block_template['mutable'] = ["coinbase/append", "submit/coinbase"]
         block_template['transactions'] = [x.serialize() for x in self.tx]
         block_template['coinbasetxn'] = coinbase_tx.serialize()
@@ -132,25 +132,25 @@ class Work(object):
     def get_stratum_work(self, extranonce1):
         result = []
         result.append(self._get_work_id())  # Job id
-        prevblockhash = binascii.unhexlify(
+        prevblockhash = util.h2b(
             self.block_template['previousblockhash'])[::-1]
-        prevblockhash = ''.join([prevblockhash[x:x+4][::-1]
-                                for x in range(0, len(prevblockhash), 4)])
-        result.append(binascii.hexlify(prevblockhash))
+        prevblockhash = b''.join([prevblockhash[x:x+4][::-1]
+                                 for x in range(0, len(prevblockhash), 4)])
+        result.append(util.b2h(prevblockhash))
 
         coinbase_tx = self._create_coinbase_tx(
-            extranonce1, '\x00\x00\x00\x00')
+            extranonce1, b'\x00\x00\x00\x00')
         merkle = self._create_merkle(coinbase_tx)
         coinbase_data = bytearray(coinbase_tx.raw_tx)
         orig_len = coinbase_data[41]
         firstpart_len = orig_len - 4 - config.extranonce2_size
-        result.append(binascii.hexlify(coinbase_data[:42+firstpart_len]))
-        result.append(binascii.hexlify(coinbase_data[42+orig_len:]))
-        result.append([binascii.hexlify(x) for x in merkle.branches])
-        result.append(binascii.hexlify(
+        result.append(util.b2h(coinbase_data[:42+firstpart_len]))
+        result.append(util.b2h(coinbase_data[42+orig_len:]))
+        result.append([util.b2h(x) for x in merkle.branches])
+        result.append(util.b2h(
                       struct.pack('>I', self.block_template['version'])))
         result.append(self.block_template['bits'])
-        result.append(binascii.hexlify(
+        result.append(util.b2h(
                       struct.pack('>I', self.block_template['curtime'])))
         result.append(True)
 

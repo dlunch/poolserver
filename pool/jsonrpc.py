@@ -5,7 +5,8 @@ import traceback
 logger = logging.getLogger('JsonRPC')
 
 
-from errors import RPCQuitError, IsStratumConnection
+from .errors import RPCQuitError, IsStratumConnection
+from .compat import str, bytes
 
 
 class JSONRPCError(Exception):
@@ -20,7 +21,7 @@ def read_http_request(file):
     uri = None
     with gevent.Timeout(10, False):
         while True:
-            line = file.readline()
+            line = str(file.readline(), 'ascii')
             if not line or line == '\r\n':
                 break
             if line[0] == '{':
@@ -33,7 +34,7 @@ def read_http_request(file):
                 k, v = line.split(':', 1)
                 headers[k.strip().lower()] = v.strip()
         if 'content-length' in headers:
-            data = file.read(int(headers['content-length']))
+            data = str(file.read(int(headers['content-length'])), 'ascii')
     return headers, uri, data
 
 
@@ -44,17 +45,18 @@ def send_http_response(file, code, content, headers=None):
         message = 'Internal Server Error'
     elif code == 400:
         message = 'Bad Request'
-    file.write('HTTP/1.1 %d %s\r\n' % (code, message))
-    file.write('Server: dlunchpool\r\n')
+    file.write(bytes('HTTP/1.1 %d %s\r\n' % (code, message), 'ascii'))
+    file.write(bytes('Server: dlunchpool\r\n', 'ascii'))
     if content:
-        file.write('Content-Length: %d\r\n' % len(content))
-        file.write('Content-Type: application/json\r\n')
+        file.write(bytes('Content-Length: %d\r\n' % len(content), 'ascii'))
+        file.write(bytes('Content-Type: application/json\r\n', 'ascii'))
     if headers:
         for i in headers:
-            file.write('%s: %s\r\n' % (i, headers[i]))
-    file.write('\r\n')
+            file.write(bytes('%s: %s\r\n' % (i, headers[i]), 'ascii'))
+    file.write(bytes('\r\n', 'ascii'))
     if content:
-        file.write(content)
+        file.write(bytes(content, 'ascii'))
+    file.flush()
 
 
 def create_request(method, params):

@@ -9,37 +9,37 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 logger = logging.getLogger('Pool')
 
-import config
-import work
-import jsonrpc
-from stratum import Stratum
-from errors import RPCQuitError, IsStratumConnection
+from . import config
+from . import work
+from . import jsonrpc
+from .stratum import Stratum
+from .errors import RPCQuitError, IsStratumConnection
 
 
 class Pool(object):
     def __init__(self):
         if config.net == 'bitcoin':
-            import net.bitcoin
-            self.net = net.bitcoin.Bitcoin(
+            from .net import bitcoin
+            self.net = bitcoin.Bitcoin(
                 config.rpc_host,
                 config.rpc_port,
                 config.rpc_username,
                 config.rpc_password)
         elif config.net == 'bitcoin_testnet':
-            import net.bitcoin_testnet
-            self.net = net.bitcoin_testnet.BitcoinTestnet(
+            from .net import bitcoin_testnet
+            self.net = bitcoin_testnet.BitcoinTestnet(
                 config.rpc_host,
                 config.rpc_port,
                 config.rpc_username,
                 config.rpc_password)
-
         while True:
             try:
                 version = self.net.getinfo()
                 info = self.net.getmininginfo()
                 break
             except Exception as e:
-                logger.error("Cannot connect to bitcoind: %r" % e)
+                logger.error("Cannot connect to bitcoind:")
+                logger.error(traceback.format_exc())
             gevent.sleep(1)
 
         logger.info('Running on %s, version %d' %
