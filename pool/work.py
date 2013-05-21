@@ -74,9 +74,13 @@ class Work(object):
         coinbase_tx = self._create_coinbase_tx(
             binascii.unhexlify(self._get_work_id()), '')
         merkle = self._create_merkle(coinbase_tx)
+        prevblockhash = binascii.unhexlify(
+            self.block_template['previousblockhash'])[::-1]
+        prevblockhash = ''.join([prevblockhash[x:x+4]
+                                for x in range(0, len(prevblockhash), 4)])
+
         block_header = struct.pack('<I', self.block_template['version']) +\
-            binascii.unhexlify(
-                self.block_template['previousblockhash'])[::-1] +\
+            prevblockhash +\
             merkle.root +\
             struct.pack('<I', self.block_template['curtime']) +\
             binascii.unhexlify(self.block_template['bits'])[::-1] +\
@@ -129,8 +133,10 @@ class Work(object):
         result = []
         result.append(self._get_work_id())  # Job id
         prevblockhash = binascii.unhexlify(
-            self.block_template['previousblockhash'])
-        result.append(binascii.hexlify(prevblockhash[::-1]))
+            self.block_template['previousblockhash'])[::-1]
+        prevblockhash = ''.join([prevblockhash[x:x+4][::-1]
+                                for x in range(0, len(prevblockhash), 4)])
+        result.append(binascii.hexlify(prevblockhash))
 
         coinbase_tx = self._create_coinbase_tx(
             extranonce1, '\x00\x00\x00\x00')
