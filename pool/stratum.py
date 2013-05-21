@@ -17,6 +17,7 @@ class Stratum(object):
         self.work = work
         self.extranonce1 = Stratum.seq ^ 0xdeadbeef
         self.difficulty = config.target_difficulty
+        self.pusher = None
         Stratum.seq += 1
 
     def _send_stratum_message(self, message):
@@ -49,7 +50,8 @@ class Stratum(object):
             if not line:
                 break
 
-        self.pusher.kill()
+        if self.pusher:
+            self.pusher.kill()
 
     def mining_subscribe(self, uri, params):
         self.pusher = gevent.spawn(self.block_pusher)

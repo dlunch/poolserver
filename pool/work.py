@@ -79,8 +79,8 @@ class Work(object):
         """For worker"""
 
         longpollid = 'init'
-        if 'longpollid' in params:
-            longpollid = params['longpollid']
+        if len(params) > 1 and 'longpollid' in params[0]:
+            longpollid = params[0]['longpollid']
         if longpollid != 'init' or uri == config.longpoll_uri:
             event = gevent.event.Event()
             self.add_longpoll_event(event)

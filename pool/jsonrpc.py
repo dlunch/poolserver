@@ -86,11 +86,6 @@ def process_request(headers, uri, data, handler):
             raise JSONRPCError(-32601, 'Method Not Found')
         method = getattr(handler, method_name)
         params = data['params']
-        if type(params) == list:
-            new_params = {}
-            for i in params:
-                new_params.update(i)
-            params = new_params
         response = create_response(data['id'], method(params, uri))
         return 200, response
     except RPCQuitError:
