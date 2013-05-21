@@ -78,7 +78,7 @@ class Work(object):
             binascii.unhexlify(self.block_template['previousblockhash']) +\
             merkle.root +\
             struct.pack('<I', self.block_template['curtime']) +\
-            binascii.unhexlify(self.block_template['bits']) +\
+            binascii.unhexlify(self.block_template['bits'])[::-1] +\
             '\x00\x00\x00\x00' + \
             ("\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
             "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
