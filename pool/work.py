@@ -42,8 +42,8 @@ class Work(object):
 
             # XXX GIL will prevent these values read from other thread
             self.block_template = block_template
-            self.seq += 1
-            self._create_tx()
+            self.tx = [Transaction(x) for x in
+                       self.block_template['transactions']]
             events = self.longpoll_events
             self.longpoll_events = []
             for i in events:
@@ -51,17 +51,19 @@ class Work(object):
             self.block_event.wait(60)
             self.block_event.clear()
 
-    def _create_tx(self):
-        self.coinbase_tx = CoinbaseTransaction(
-            self.block_template, self.generation_pubkey)
-        self.tx = [Transaction(x) for x in self.block_template['transactions']]
-        self.merkle = MerkleTree([x.raw_tx for x in
-                                  self.tx + [self.coinbase_tx]])
+    def _create_coinbase_tx(self, extranonce1, extranonce2):
+        return CoinbaseTransaction(
+            self.block_template, self.generation_pubkey,
+            extranonce1, extranonce2)
+
+    def _create_merkle(self, coinbase_tx):
+        return MerkleTree([x.raw_tx for x in self.tx + [coinbase_tx]])
 
     def _serialize_target(self):
         return util.long_to_bytes(self.target, 32)
 
     def _get_work_id(self):
+        self.seq += 1
         return binascii.hexlify(struct.pack('<I', self.seq ^ 0xdeadbeef))
 
     def getwork(self, params, uri):
@@ -69,9 +71,12 @@ class Work(object):
             event = gevent.event.Event()
             self.add_longpoll_event(event)
             event.wait()
+        coinbase_tx = self._create_coinbase_tx(
+            binascii.unhexlify(self._get_work_id()), '')
+        merkle = self._create_merkle(coinbase_tx)
         block_header = struct.pack('<I', self.block_template['version']) +\
             binascii.unhexlify(self.block_template['previousblockhash']) +\
-            self.merkle.root +\
+            merkle.root +\
             struct.pack('<I', self.block_template['curtime']) +\
             binascii.unhexlify(self.block_template['bits']) +\
             '\x00\x00\x00\x00' + \
@@ -100,6 +105,7 @@ class Work(object):
             self.add_longpoll_event(event)
             event.wait()
             longpollid = self._get_work_id()
+        coinbase_tx = self._create_coinbase_tx('', '')
         block_template = {k: self.block_template[k]
                           for k in self.block_template
                           if k not in
@@ -108,7 +114,7 @@ class Work(object):
         block_template['target'] = binascii.hexlify(self._serialize_target())
         block_template['mutable'] = ["coinbase/append", "submit/coinbase"]
         block_template['transactions'] = [x.serialize() for x in self.tx]
-        block_template['coinbasetxn'] = self.coinbase_tx.serialize()
+        block_template['coinbasetxn'] = coinbase_tx.serialize()
 
         #Long polling extension
         block_template['longpollid'] = longpollid

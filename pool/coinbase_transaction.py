@@ -3,11 +3,11 @@ import binascii
 
 import util
 from transaction import Transaction
-import config
 
 
 class CoinbaseTransaction(object):
-    def __init__(self, block_template, generation_pubkey):
+    def __init__(self, block_template, generation_pubkey,
+                 extranonce1, extranonce2):
         #BIP 0034
         coinbase_script = util.encode_height(block_template['height'])
 
@@ -19,8 +19,8 @@ class CoinbaseTransaction(object):
             data = binascii.unhexlify(block_template['coinbaseflags'])
             coinbase_script += data
 
-        coinbase_script += '\x00\x00\x00\x00'  # Extranonce1
-        coinbase_script += '\x00' * config.extranonce2_size  # Extranonce2
+        coinbase_script += extranonce1
+        coinbase_script += extranonce2
 
         if 'coinbasevalue' in block_template:
             coinbase_value = block_template['coinbasevalue']
