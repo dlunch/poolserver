@@ -55,7 +55,7 @@ class Work(object):
         if uri == config.longpoll_uri:
             event = gevent.event.Event()
             self.add_longpoll_event(event)
-            event.wait(60)
+            event.wait()
         block_header = struct.pack('<I', self.block_template['version']) +\
             binascii.unhexlify(self.block_template['previousblockhash']) +\
             self.merkle.root +\
@@ -70,10 +70,11 @@ class Work(object):
         # To little endian
         block_header = ''.join([block_header[x:x+4][::-1]
                                for x in range(0, len(block_header), 4)])
+        target = self._serialize_target()[::-1]
 
         #TODO midstate, hash1 (deprecated)
         return {'data': binascii.hexlify(block_header),
-                'target': self._serialize_target()}
+                'target': target}
 
     def getblocktemplate(self, params, uri):
         """For worker"""
@@ -84,7 +85,7 @@ class Work(object):
         if longpollid != 'init' or uri == config.longpoll_uri:
             event = gevent.event.Event()
             self.add_longpoll_event(event)
-            event.wait(60)
+            event.wait()
             longpollid = self._get_work_id()
         block_template = {k: self.block_template[k]
                           for k in self.block_template
