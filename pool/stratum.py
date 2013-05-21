@@ -24,7 +24,7 @@ class Stratum(object):
             self._send_stratum_message(request)
 
             self.work.add_longpoll_event(event)
-            event.wait(60)
+            event.wait()
 
     def handle(self, firstline):
         line = firstline
@@ -37,6 +37,8 @@ class Stratum(object):
             if not line:
                 break
 
+        self.pusher.kill()
+
     def mining_subscribe(self, uri, params):
-        gevent.spawn(self.block_pusher)
+        self.pusher = gevent.spawn(self.block_pusher)
         return {}
