@@ -70,9 +70,10 @@ class Pool(object):
             file = socket.makefile()
             headers, uri, data = jsonrpc.read_http_request(file)
 
+            logger.debug('\nRequest: %s' % (result))
             code, result = jsonrpc.process_request(headers, uri, data,
                                                    self.work)
-            logger.debug('\nRequest: %s\nResponse:%s' % (data, result))
+            logger.debug('\nResponse:%s' % (result))
             jsonrpc.send_http_response(file, code, result,
                                        self._get_extended_headers(headers))
         except RPCQuitError:
