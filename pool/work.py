@@ -1,4 +1,5 @@
 import gevent
+import gevent.event
 import binascii
 import logging
 import struct
@@ -19,6 +20,10 @@ class Work(object):
         self.net = net
         self.target = target
         self.generation_pubkey = generation_pubkey
+        self.longpoll_events = []
+
+    def add_longpoll_event(self, event):
+        self.longpoll_events.append(event)
 
     def refresh_work(self):
         while True:
@@ -48,7 +53,9 @@ class Work(object):
 
     def getwork(self, params, uri):
         if uri == config.longpoll_uri:
-            gevent.sleep(60)
+            event = gevent.event.Event()
+            self.add_longpoll_event(event)
+            event.wait(60)
         block_header = struct.pack('<I', self.block_template['version']) +\
             binascii.unhexlify(self.block_template['previousblockhash']) +\
             self.merkle.root +\
@@ -75,7 +82,9 @@ class Work(object):
         if 'longpollid' in params:
             longpollid = params['longpollid']
         if longpollid != 'init' or uri == config.longpoll_uri:
-            gevent.sleep(60)
+            event = gevent.event.Event()
+            self.add_longpoll_event(event)
+            event.wait(60)
             longpollid = self._get_work_id()
         block_template = {k: self.block_template[k]
                           for k in self.block_template

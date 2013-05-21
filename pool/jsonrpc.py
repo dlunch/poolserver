@@ -102,4 +102,5 @@ def process_request(headers, uri, data, handler):
         logger.error('Exception while processing request')
         logger.error(traceback.format_exc())
 
+        id = data['id'] if type(data) == dict and 'id' in data else None
         return 500, create_error_response(id, -32603, 'Internal Error')
