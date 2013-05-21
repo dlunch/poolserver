@@ -54,7 +54,7 @@ class Pool(object):
                               self.generation_pubkey)
 
     def run(self):
-        self.work.refresh_work()
+        self.work.start_refresher()
         server = gevent.server.StreamServer((config.worker_host,
                                              config.worker_port),
                                             self._serve_worker)

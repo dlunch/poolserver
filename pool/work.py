@@ -21,20 +21,35 @@ class Work(object):
         self.target = target
         self.generation_pubkey = generation_pubkey
         self.longpoll_events = []
+        self.block_event = gevent.event.Event()
 
     def add_longpoll_event(self, event):
         self.longpoll_events.append(event)
 
-    def refresh_work(self):
+    def start_refresher(self):
+        gevent.spawn(self.refresher)
+
+    def refresher(self):
         while True:
-            try:
-                self.block_template = self.net.getblocktemplate()
-                break
-            except RPCError as e:
-                logger.error("Bitcoin RPCError:%r" % e)
-            gevent.sleep(1)
-        self.seq += 1
-        self._create_tx()
+            logger.debug('Block refresh')
+            while True:
+                try:
+                    block_template = self.net.getblocktemplate()
+                    break
+                except RPCError as e:
+                    logger.error("Bitcoin RPCError:%r" % e)
+                gevent.sleep(1)
+
+            # XXX GIL will prevent these values read from other thread
+            self.block_template = block_template
+            self.seq += 1
+            self._create_tx()
+            events = self.longpoll_events
+            self.longpoll_events = []
+            for i in events:
+                i.set()
+            self.block_event.wait(60)
+            self.block_event.clear()
 
     def _create_tx(self):
         self.coinbase_tx = CoinbaseTransaction(
