@@ -75,7 +75,8 @@ class Work(object):
             binascii.unhexlify(self._get_work_id()), '')
         merkle = self._create_merkle(coinbase_tx)
         block_header = struct.pack('<I', self.block_template['version']) +\
-            binascii.unhexlify(self.block_template['previousblockhash']) +\
+            binascii.unhexlify(
+                self.block_template['previousblockhash'])[::-1] +\
             merkle.root +\
             struct.pack('<I', self.block_template['curtime']) +\
             binascii.unhexlify(self.block_template['bits'])[::-1] +\
