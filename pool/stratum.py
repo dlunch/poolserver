@@ -15,7 +15,7 @@ class Stratum(object):
     def __init__(self, file, work):
         self.file = file
         self.work = work
-        self.extranonce1 = Stratum.seq ^ 0xdeadbeef
+        self.extranonce1 = struct.pack('<I', Stratum.seq ^ 0xdeadbeef)
         self.difficulty = config.target_difficulty
         self.pusher = None
         Stratum.seq += 1
@@ -34,7 +34,8 @@ class Stratum(object):
 
             self._send_stratum_message(jsonrpc.create_request(
                                        'mining.notify',
-                                       self.work.get_stratum_work()))
+                                       self.work.get_stratum_work(
+                                           self.extranonce1)))
 
             self.work.add_longpoll_event(event)
             event.wait()
@@ -55,7 +56,7 @@ class Stratum(object):
 
     def mining_subscribe(self, uri, params):
         self.pusher = gevent.spawn(self.block_pusher)
-        nonce1 = binascii.hexlify(struct.pack('<I', self.extranonce1))
+        nonce1 = binascii.hexlify(self.extranonce1)
         return [['mining.notify', 'ae6812eb4cd7735a302a8a9dd95cf71f'],
                 nonce1, config.extranonce2_size]
 

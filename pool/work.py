@@ -124,19 +124,22 @@ class Work(object):
 
         return block_template
 
-    def get_stratum_work(self):
+    def get_stratum_work(self, extranonce1):
         result = []
         result.append(self._get_work_id())  # Job id
         prevblockhash = binascii.unhexlify(
             self.block_template['previousblockhash'])
         result.append(binascii.hexlify(prevblockhash[::-1]))
 
-        coinbase_data = bytearray(self.coinbase_tx.raw_tx)
+        coinbase_tx = self._create_coinbase_tx(
+            extranonce1, '\x00\x00\x00\x00')
+        merkle = self._create_merkle(coinbase_tx)
+        coinbase_data = bytearray(coinbase_tx.raw_tx)
         orig_len = coinbase_data[41]
         firstpart_len = orig_len - 4 - config.extranonce2_size
         result.append(binascii.hexlify(coinbase_data[:42+firstpart_len]))
         result.append(binascii.hexlify(coinbase_data[42+orig_len:]))
-        result.append([binascii.hexlify(x) for x in self.merkle.branches])
+        result.append([binascii.hexlify(x) for x in merkle.branches])
         result.append(binascii.hexlify(
                       struct.pack('>I', self.block_template['version'])))
         result.append(self.block_template['bits'])
