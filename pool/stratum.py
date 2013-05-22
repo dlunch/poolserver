@@ -70,8 +70,8 @@ class Stratum(object):
         worker_name = params[0]  # From authorize
         work_id = params[1]
         extranonce2 = params[2]
-        ntime = params[3]
-        nonce = params[4]
+        ntime = util.h2b(params[3])[::-1]
+        nonce = util.h2b(params[4])
 
         logger.debug("Received block from %s" % worker_name)
 
@@ -84,9 +84,7 @@ class Stratum(object):
                                                    util.h2b(extranonce2))
         merkle = self.work.create_merkle(coinbase_tx)
 
-        block_header = self.work.create_block_header(merkle.root,
-                                                     util.h2b(ntime),
-                                                     util.h2b(nonce))
+        block_header = self.work.create_block_header(merkle.root, ntime, nonce)
 
         block_header += util.encode_size(len(self.work.tx) + 1) +\
             coinbase_tx.raw_tx
