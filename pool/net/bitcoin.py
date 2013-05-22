@@ -25,8 +25,10 @@ class Bitcoin(object):
             if not os.path.exists(config_file):
                 raise Exception("Cannot find configuration")
 
-            host = 'localhost'
-            port = self._get_default_port()
+            if not host:
+                host = 'localhost'
+            if not port:
+                port = self._get_default_port()
 
             with open(config_file, 'r') as f:
                 data = f.read()
