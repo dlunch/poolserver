@@ -48,6 +48,7 @@ class Bitcoin(object):
         self.auth = base64.encodestring(bytes('%s:%s' % (username, password),
                                         'ascii'))
         self.auth = str(self.auth, 'ascii').replace('\n', '')
+        logger.debug('RPC Host: %s' % self.rpc_host)
 
     def _get_config_file(self):
         return os.path.join(os.path.expanduser('~/.bitcoin'), 'bitcoin.conf')
