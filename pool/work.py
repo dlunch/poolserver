@@ -86,11 +86,7 @@ class Work(object):
             merkle_root +\
             ntime +\
             bits +\
-            nonce + \
-            (b"\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-             b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-             b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-             b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x80")
+            nonce
 
         return block_header
 
@@ -122,6 +118,11 @@ class Work(object):
         ntime = struct.pack('<I', self.block_template['curtime'])
         block_header = self.create_block_header(merkle.root, ntime,
                                                 b'\x00\x00\x00\x00')
+        block_header += (b"\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                         b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                         b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                         b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x80")
+
         self.work_data[merkle.root] = coinbase_tx
 
         # To little endian
