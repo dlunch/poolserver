@@ -5,7 +5,7 @@ import traceback
 logger = logging.getLogger('JsonRPC')
 
 
-from .errors import RPCQuitError, IsStratumConnection
+from .errors import IsStratumConnection
 from .compat import str, bytes
 
 
@@ -90,8 +90,6 @@ def process_request(headers, uri, data, handler):
         params = data['params']
         response = create_response(data['id'], method(params, uri))
         return 200, response
-    except RPCQuitError:
-        raise
     except JSONRPCError as e:
         id = data['id'] if type(data) == dict and 'id' in data else None
         return 500, create_error_response(id, e.code, e.message)

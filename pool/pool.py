@@ -13,7 +13,7 @@ from . import config
 from . import work
 from . import jsonrpc
 from .stratum import Stratum
-from .errors import RPCQuitError, IsStratumConnection
+from .errors import IsStratumConnection
 
 
 class Pool(object):
@@ -76,8 +76,6 @@ class Pool(object):
             logger.debug('\nResponse:%s' % (result))
             jsonrpc.send_http_response(file, code, result,
                                        self._get_extended_headers(headers))
-        except RPCQuitError:
-            return
         except IsStratumConnection as e:
             self._handle_stratum(file, e.firstline)
         except:
