@@ -29,7 +29,10 @@ class Work(object):
         self.longpoll_events.append(event)
 
     def start_refresher(self):
+        self.wait_event = gevent.event.Event()
         gevent.spawn(self.refresher)
+        self.wait_event.wait()
+        self.wait_event = None
 
     def refresher(self):
         while True:
@@ -49,8 +52,13 @@ class Work(object):
             events = self.longpoll_events
             self.longpoll_events = []
             self.work_data = {}
+
             for i in events:
                 i.set()
+            if self.wait_event:
+                self.wait_event.set()
+
+            logger.debug('Block refresh done')
             self.block_event.wait(60)
             self.block_event.clear()
 
