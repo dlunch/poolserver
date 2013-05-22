@@ -2,6 +2,7 @@ import gevent
 import gevent.event
 import logging
 import struct
+import hashlib
 
 from .transaction import Transaction
 from .coinbase_transaction import CoinbaseTransaction
@@ -70,6 +71,8 @@ class Work(object):
 
     def process_block(self, block_header):
         logger.debug('process_block %s' % util.b2h(block_header))
+        logger.debug('hash %s' % util.b2h(hashlib.sha256(
+            hashlib.sha256(block_header[:80]).digest()).digest()))
         return False
 
     def create_block_header(self, merkle_root, ntime, nonce):

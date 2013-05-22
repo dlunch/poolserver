@@ -46,7 +46,7 @@ class CoinbaseTransaction(object):
         result += b'\x00\x00\x00\x00'  # Lock time
 
         self.raw_tx = result
-        logging.debug('Generated coinbase transaction %s' %
+        logger.debug('Generated coinbase transaction %s' %
                       util.b2h(self.raw_tx))
 
     def serialize(self):
