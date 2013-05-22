@@ -84,8 +84,11 @@ class Pool(object):
             jsonrpc.send_http_response(file, 400, None)
         finally:
             logger.debug('Request process complete')
-            file.close()
-            socket.close()
+            try:
+                file.close()
+                socket.close()
+            except:
+                pass
 
     def _handle_stratum(self, file, firstline):
         logger.debug('Handling stratum connection')
