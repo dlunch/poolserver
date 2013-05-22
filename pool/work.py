@@ -77,7 +77,6 @@ class Work(object):
 
         prevblockhash = util.h2b(
             self.block_template['previousblockhash'])[::-1]
-        merkle_root = merkle_root[::-1]
         bits = util.h2b(self.block_template['bits'])[::-1]
 
         block_header = struct.pack('<I', version) +\
