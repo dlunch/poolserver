@@ -60,7 +60,7 @@ class Work(object):
             extranonce1, extranonce2)
 
     def create_merkle(self, coinbase_tx):
-        return MerkleTree([x.raw_tx for x in self.tx + [coinbase_tx]])
+        return MerkleTree([x.raw_tx for x in [coinbase_tx] + self.tx])
 
     def _serialize_target(self):
         return util.long_to_bytes(self.target, 32)
