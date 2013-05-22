@@ -28,34 +28,40 @@ class Stratum(object):
         self.file.flush()
 
     def block_pusher(self):
-        event = gevent.event.Event()
-        while True:
-            self._send_stratum_message(jsonrpc.create_request(
-                                       'mining.set_difficulty',
-                                       [self.difficulty]))
+        try:
+            event = gevent.event.Event()
+            while True:
+                self._send_stratum_message(jsonrpc.create_request(
+                                           'mining.set_difficulty',
+                                           [self.difficulty]))
 
-            params = self.work.get_stratum_work(self.extranonce1)
-            self._send_stratum_message(jsonrpc.create_request(
-                                       'mining.notify', params))
+                params = self.work.get_stratum_work(self.extranonce1)
+                self._send_stratum_message(jsonrpc.create_request(
+                                           'mining.notify', params))
 
-            self.last_work_id = params[0]
-            self.work.add_longpoll_event(event)
-            event.wait()
-            event.clear()
+                self.last_work_id = params[0]
+                self.work.add_longpoll_event(event)
+                event.wait()
+                event.clear()
+        except:
+            pass
 
     def handle(self, firstline):
-        line = firstline
-        while True:
-            logger.debug('Stratum receive: %s' % line)
-            _, response = jsonrpc.process_request(None, None, line, self)
-            self._send_stratum_message(response)
+        try:
+            line = firstline
+            while True:
+                logger.debug('Stratum receive: %s' % line)
+                _, response = jsonrpc.process_request(None, None, line, self)
+                self._send_stratum_message(response)
 
-            line = str(self.file.readline(), 'ascii')
-            if not line:
-                break
-
-        if self.pusher:
-            self.pusher.kill()
+                line = str(self.file.readline(), 'ascii')
+                if not line:
+                    break
+        except:
+            pass
+        finally:
+            if self.pusher:
+                self.pusher.kill()
 
     def mining_subscribe(self, params, uri):
         self.pusher = gevent.spawn(self.block_pusher)
