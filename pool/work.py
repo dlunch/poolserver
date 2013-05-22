@@ -10,6 +10,7 @@ from . import config
 from .errors import RPCError
 from .merkletree import MerkleTree
 from .compat import str
+from .jsonrpc import JSONRPCError
 
 logger = logging.getLogger('Work')
 
@@ -65,6 +66,9 @@ class Work(object):
     def _get_work_id(self):
         self.seq += 1
         return util.b2h(struct.pack('<I', self.seq ^ 0xdeadbeef))
+
+    def _process_block(self, block):
+        return False
 
     def getwork(self, params, uri):
         if uri == config.longpoll_uri:
@@ -154,4 +158,11 @@ class Work(object):
                       struct.pack('>I', self.block_template['curtime'])))
         result.append(True)
 
+        return result
+
+    def submitblock(self, params, uri):
+        block = util.h2b(params[0])
+        result = self._process_block(block)
+        if not result:
+            raise JSONRPCError(-23, 'Rejected')
         return result
