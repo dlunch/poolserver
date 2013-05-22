@@ -16,6 +16,7 @@ class Stratum(object):
     def __init__(self, file, work):
         self.file = file
         self.work = work
+        self.last_work_id = ''
         self.extranonce1 = struct.pack('<I', Stratum.seq ^ 0xdeadbeef)
         self.difficulty = config.target_difficulty
         self.pusher = None
@@ -33,13 +34,14 @@ class Stratum(object):
                                        'mining.set_difficulty',
                                        [self.difficulty]))
 
+            params = self.work.get_stratum_work(self.extranonce1)
             self._send_stratum_message(jsonrpc.create_request(
-                                       'mining.notify',
-                                       self.work.get_stratum_work(
-                                           self.extranonce1)))
+                                       'mining.notify', params))
 
+            self.last_work_id = params[0]
             self.work.add_longpoll_event(event)
             event.wait()
+            event.clear()
 
     def handle(self, firstline):
         line = firstline
@@ -55,11 +57,37 @@ class Stratum(object):
         if self.pusher:
             self.pusher.kill()
 
-    def mining_subscribe(self, uri, params):
+    def mining_subscribe(self, params, uri):
         self.pusher = gevent.spawn(self.block_pusher)
         nonce1 = util.b2h(self.extranonce1)
         return [['mining.notify', 'ae6812eb4cd7735a302a8a9dd95cf71f'],
                 nonce1, config.extranonce2_size]
 
-    def mining_authorize(self, uri, params):
+    def mining_authorize(self, params, uri):
         return True
+
+    def mining_submit(self, params, uri):
+        worker_name = params[0]  # From authorize
+        work_id = params[1]
+        extranonce2 = params[2]
+        ntime = params[3]
+        nonce = params[4]
+
+        logger.debug("Received block from %s" % worker_name)
+
+        if work_id != self.last_work_id:
+            logger.debug("Wrong work id (%s expected, %s received)" %
+                         (self.last_work_id, work_id))
+            return False
+
+        coinbase_tx = self.work.create_coinbase_tx(self.extranonce1,
+                                                   util.h2b(extranonce2))
+        merkle = self.work.create_merkle(coinbase_tx)
+
+        block_header = self.work.create_block_header(merkle.root,
+                                                     util.h2b(ntime),
+                                                     util.h2b(nonce))
+
+        block_header += util.encode_size(len(self.work.tx) + 1) +\
+            coinbase_tx.raw_tx
+        return self.work.process_block(block_header)

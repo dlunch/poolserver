@@ -9,7 +9,6 @@ from . import util
 from . import config
 from .errors import RPCError
 from .merkletree import MerkleTree
-from .compat import str
 from .jsonrpc import JSONRPCError
 
 logger = logging.getLogger('Work')
@@ -22,6 +21,7 @@ class Work(object):
         self.target = target
         self.generation_pubkey = generation_pubkey
         self.longpoll_events = []
+        self.work_data = {}
         self.block_event = gevent.event.Event()
 
     def add_longpoll_event(self, event):
@@ -47,52 +47,82 @@ class Work(object):
                        self.block_template['transactions']]
             events = self.longpoll_events
             self.longpoll_events = []
+            self.work_data = {}
             for i in events:
                 i.set()
             self.block_event.wait(60)
             self.block_event.clear()
 
-    def _create_coinbase_tx(self, extranonce1, extranonce2):
+    def create_coinbase_tx(self, extranonce1, extranonce2):
         return CoinbaseTransaction(
             self.block_template, self.generation_pubkey,
             extranonce1, extranonce2)
 
-    def _create_merkle(self, coinbase_tx):
+    def create_merkle(self, coinbase_tx):
         return MerkleTree([x.raw_tx for x in self.tx + [coinbase_tx]])
 
     def _serialize_target(self):
         return util.long_to_bytes(self.target, 32)
 
-    def _get_work_id(self):
+    def get_work_id(self):
         self.seq += 1
         return util.b2h(struct.pack('<I', self.seq ^ 0xdeadbeef))
 
-    def _process_block(self, block):
+    def process_block(self, block_header):
+        logger.debug('process_block %s' % util.b2h(block_header))
         return False
 
-    def getwork(self, params, uri):
-        if uri == config.longpoll_uri:
-            event = gevent.event.Event()
-            self.add_longpoll_event(event)
-            event.wait()
-        coinbase_tx = self._create_coinbase_tx(
-            util.h2b(self._get_work_id()), b'')
-        merkle = self._create_merkle(coinbase_tx)
+    def create_block_header(self, merkle_root, ntime, nonce):
+        version = self.block_template['version']
+
         prevblockhash = util.h2b(
             self.block_template['previousblockhash'])[::-1]
         prevblockhash = b''.join([prevblockhash[x:x+4]
                                  for x in range(0, len(prevblockhash), 4)])
+        bits = util.h2b(self.block_template['bits'])[::-1]
 
-        block_header = struct.pack('<I', self.block_template['version']) +\
+        block_header = struct.pack('<I', version) +\
             prevblockhash +\
-            merkle.root +\
-            struct.pack('<I', self.block_template['curtime']) +\
-            util.h2b(self.block_template['bits'])[::-1] +\
-            b'\x00\x00\x00\x00' + \
+            merkle_root +\
+            ntime +\
+            bits +\
+            nonce + \
             (b"\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x80")
+             b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+             b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+             b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x80")
+
+        return block_header
+
+    def getwork(self, params, uri):
+        if len(params) > 0:
+            block_header = util.h2b(params[0])
+            merkle_root = block_header[36:68]
+
+            if merkle_root not in self.work_data:
+                logger.error("Unknown worker submission")
+                return False
+            coinbase_tx = self.work_data[merkle_root].raw_tx
+            block_header += util.encode_size(len(self.tx) + 1)
+            block_header += coinbase_tx
+
+            result = self.process_block(block_header)
+
+            del self.work_data[merkle_root]
+            return result
+
+        if uri == config.longpoll_uri:
+            event = gevent.event.Event()
+            self.add_longpoll_event(event)
+            event.wait()
+
+        coinbase_tx = self.create_coinbase_tx(
+            util.h2b(self.get_work_id()), b'')
+        merkle = self.create_merkle(coinbase_tx)
+        ntime = struct.pack('<I', self.block_template['curtime'])
+        block_header = self.create_block_header(merkle.root, ntime,
+                                                b'\x00\x00\x00\x00')
+        self.work_data[merkle.root] = coinbase_tx
 
         # To little endian
         block_header = b''.join([block_header[x:x+4][::-1]
@@ -107,14 +137,27 @@ class Work(object):
         """For worker"""
 
         longpollid = 'init'
-        if len(params) > 1 and 'longpollid' in params[0]:
-            longpollid = params[0]['longpollid']
+        mode = 'template'  # For older client
+        data = None
+        for i in params:
+            if 'longpollid' in i:
+                longpollid = i['longpollid']
+            if 'mode' in i:
+                mode = i['mode']
+            if 'data' in i:
+                data = i['data']
+        if mode == 'submit':
+            result = self.process_block(util.h2b(data))
+            if result:
+                return True
+            return None
+
         if longpollid != 'init' or uri == config.longpoll_uri:
             event = gevent.event.Event()
             self.add_longpoll_event(event)
             event.wait()
-            longpollid = self._get_work_id()
-        coinbase_tx = self._create_coinbase_tx(b'', b'')
+            longpollid = self.get_work_id()
+        coinbase_tx = self.create_coinbase_tx(b'', b'')
         block_template = {k: self.block_template[k]
                           for k in self.block_template
                           if k not in
@@ -135,16 +178,16 @@ class Work(object):
 
     def get_stratum_work(self, extranonce1):
         result = []
-        result.append(self._get_work_id())  # Job id
+        result.append(self.get_work_id())  # Job id
         prevblockhash = util.h2b(
             self.block_template['previousblockhash'])[::-1]
         prevblockhash = b''.join([prevblockhash[x:x+4][::-1]
                                  for x in range(0, len(prevblockhash), 4)])
         result.append(util.b2h(prevblockhash))
 
-        coinbase_tx = self._create_coinbase_tx(
+        coinbase_tx = self.create_coinbase_tx(
             extranonce1, b'\x00\x00\x00\x00')
-        merkle = self._create_merkle(coinbase_tx)
+        merkle = self.create_merkle(coinbase_tx)
         coinbase_data = bytearray(coinbase_tx.raw_tx)
         orig_len = coinbase_data[41]
         firstpart_len = orig_len - 4 - config.extranonce2_size
@@ -162,7 +205,7 @@ class Work(object):
 
     def submitblock(self, params, uri):
         block = util.h2b(params[0])
-        result = self._process_block(block)
+        result = self.process_block(block)
         if not result:
             raise JSONRPCError(-23, 'Rejected')
         return result

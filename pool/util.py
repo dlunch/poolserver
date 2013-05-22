@@ -100,5 +100,6 @@ def encode_size(size):
 def b2h(data):
     return str(binascii.hexlify(data), 'ascii')
 
+
 def h2b(data):
     return binascii.unhexlify(data)
