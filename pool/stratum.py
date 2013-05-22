@@ -71,7 +71,7 @@ class Stratum(object):
         work_id = params[1]
         extranonce2 = params[2]
         ntime = util.h2b(params[3])[::-1]
-        nonce = util.h2b(params[4])
+        nonce = util.h2b(params[4])[::-1]
 
         logger.debug("Received block from %s" % worker_name)
 
