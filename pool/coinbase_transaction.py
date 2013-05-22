@@ -1,4 +1,7 @@
 import struct
+import logging
+logger = logging.getLogger('Coinbase')
+
 
 from . import util
 from .transaction import Transaction
@@ -43,6 +46,8 @@ class CoinbaseTransaction(object):
         result += b'\x00\x00\x00\x00'  # Lock time
 
         self.raw_tx = result
+        logging.debug('Generated coinbase transaction %s' %
+                      util.b2h(self.raw_tx))
 
     def serialize(self):
         return {'data': util.b2h(self.raw_tx)}
