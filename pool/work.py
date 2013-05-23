@@ -24,6 +24,7 @@ class Work(object):
         self.longpoll_events = []
         self.work_data = {}
         self.block_event = gevent.event.Event()
+        self.block_template = None
 
     def add_longpoll_event(self, event):
         self.longpoll_events.append(event)
@@ -46,19 +47,24 @@ class Work(object):
                 gevent.sleep(1)
 
             # XXX GIL will prevent these values read from other thread
-            self.block_template = block_template
-            self.tx = [Transaction(x) for x in
-                       self.block_template['transactions']]
-            events = self.longpoll_events
-            self.longpoll_events = []
-            self.work_data = {}
+            if not self.block_template or\
+                self.block_template['height'] != block_template['height'] or\
+                self.block_template['transactions'] !=\
+                    block_template['transactions']:
 
-            for i in events:
-                i.set()
-            if self.wait_event:
-                self.wait_event.set()
+                self.block_template = block_template
+                self.tx = [Transaction(x) for x in
+                           self.block_template['transactions']]
+                events = self.longpoll_events
+                self.longpoll_events = []
+                self.work_data = {}
 
-            logger.debug('Block refresh done')
+                for i in events:
+                    i.set()
+                if self.wait_event:
+                    self.wait_event.set()
+
+                logger.debug('Block refresh done')
             self.block_event.wait(60)
             self.block_event.clear()
 
