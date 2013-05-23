@@ -11,7 +11,6 @@ from . import util
 from . import config
 from .errors import RPCError
 from .merkletree import MerkleTree
-from .jsonrpc import JSONRPCError
 
 logger = logging.getLogger('Work')
 
@@ -174,11 +173,11 @@ class Work(object):
                                                    self.generation_pubkey)
                 result = self.process_block(block[:ptr+txlen])
                 if result:
-                    return True
+                    return None
             except:
                 logger.error("Exception while processing block")
                 logger.error(traceback.format_exc())
-            return None
+            return 'Rejected'
 
         if longpollid != 'init' or uri == config.longpoll_uri:
             event = gevent.event.Event()
@@ -234,5 +233,5 @@ class Work(object):
         block = util.h2b(params[0])
         result = self.process_block(block)
         if not result:
-            raise JSONRPCError(-23, 'Rejected')
-        return result
+            return "Rejected"
+        return None
