@@ -47,7 +47,41 @@ class CoinbaseTransaction(object):
 
         self.raw_tx = result
         logger.debug('Generated coinbase transaction %s' %
-                      util.b2h(self.raw_tx))
+                     util.b2h(self.raw_tx))
 
     def serialize(self):
         return {'data': util.b2h(self.raw_tx)}
+
+    @classmethod
+    def verify(cls, tx, generation_pubkey):
+        """Verifies transaction is correct coinbase transaction"""
+        """returns length of transaction"""
+        version = tx[:4]
+        if version != b'\x01\x00\x00\x00':
+            raise Exception("Invalid version")
+        sizelen, txin_count = util.decode_size(tx[4:13])
+        ptr = sizelen + 4
+        if txin_count != 1:
+            raise Exception("Too many input transaction")
+        previous_output = tx[ptr:ptr+36]
+        ptr += 36
+        if previous_output != b'\x00'*32 + b'\xff\xff\xff\xff':
+            raise Exception("Wrong previous output")
+        sizelen, coinbase_len = util.decode_size(tx[ptr:ptr+9])
+        ptr += sizelen
+        ptr += coinbase_len
+        ptr += 4  # Sequence
+
+        sizelen, txout_count = util.decode_size(tx[ptr:ptr+9])
+        ptr += sizelen
+        ptr += 8  # Value
+        sizelen, script_len = util.decode_size(tx[ptr:ptr+9])
+        ptr += sizelen
+
+        output_script = tx[ptr:ptr+script_len]
+        if output_script != b'\x76\xa9\x14' + generation_pubkey + b'\x88\xac':
+            raise Exception("Wrong generation pubkey")
+
+        ptr += script_len
+        ptr += 4  # Lock time
+        return ptr

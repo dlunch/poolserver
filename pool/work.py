@@ -2,6 +2,7 @@ import gevent
 import gevent.event
 import logging
 import struct
+import traceback
 import hashlib
 
 from .transaction import Transaction
@@ -164,9 +165,19 @@ class Work(object):
             if 'data' in i:
                 data = i['data']
         if mode == 'submit':
-            result = self.process_block(util.h2b(data))
-            if result:
-                return True
+            try:
+                block = util.h2b(data)
+                sizelen, tx_size = util.decode_size(block[80:89])
+                ptr = 80 + sizelen
+
+                txlen = CoinbaseTransaction.verify(block[ptr:],
+                                                   self.generation_pubkey)
+                result = self.process_block(block[:ptr+txlen])
+                if result:
+                    return True
+            except:
+                logger.error("Exception while processing block")
+                logger.error(traceback.format_exc())
             return None
 
         if longpollid != 'init' or uri == config.longpoll_uri:

@@ -98,6 +98,16 @@ def encode_size(size):
         return b'\xff' + struct.pack('<Q', size)
 
 
+def decode_size(data):
+    if data[0] < b'\xfd':
+        return 1, struct.unpack('B', data[0])[0]
+    elif data[0] == b'\xfd':
+        return 3, struct.unpack('<H', data[0:2])[0]
+    elif data[0] == b'\xfe':
+        return 5, struct.unpack('<I', data[0:4])[0]
+    elif data[0] == b'\xff':
+        return 9, struct.unpack('<I', data[0:8])[0]
+
 def b2h(data):
     return str(binascii.hexlify(data), 'ascii')
 
