@@ -2,6 +2,7 @@ import gevent
 import gevent.event
 import logging
 import struct
+import traceback
 logger = logging.getLogger('Stratum')
 
 from . import util
@@ -45,7 +46,8 @@ class Stratum(object):
                 event.wait()
                 event.clear()
         except:
-            pass
+            logger.error("Pusher exception")
+            logger.error(traceback.format_exc())
 
     def handle(self, firstline):
         try:
@@ -59,7 +61,8 @@ class Stratum(object):
                 if not line:
                     break
         except:
-            pass
+            logger.error("Stratum handler exception")
+            logger.error(traceback.format_exc())
         finally:
             if self.pusher:
                 self.pusher.kill()
@@ -96,3 +99,6 @@ class Stratum(object):
         block_header += util.encode_size(len(self.work.tx) + 1) +\
             coinbase_tx.raw_tx
         return self.work.process_block(block_header)
+
+    def mining_get_transactions(self, params, uri):
+        return [util.b2h(x.raw_tx) for x in self.work.tx]
