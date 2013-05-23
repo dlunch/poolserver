@@ -83,6 +83,8 @@ def encode_height(height):
         if data[i] == b'\x00'[0]:
             break
     data = data[:i]
+    if len(data) == 2:
+        data = data + b'\x00'
     return struct.pack('B', len(data)) + data
 
 
@@ -90,11 +92,11 @@ def encode_size(size):
     if size < 0xfd:
         return struct.pack('B', size)
     elif size < 0xffff:
-        return '\xfd' + struct.pack('<H', size)
+        return b'\xfd' + struct.pack('<H', size)
     elif size < 0xffffffff:
-        return '\xfe' + struct.pack('<I', size)
+        return b'\xfe' + struct.pack('<I', size)
     else:
-        return '\xff' + struct.pack('<Q', size)
+        return b'\xff' + struct.pack('<Q', size)
 
 
 def b2h(data):
