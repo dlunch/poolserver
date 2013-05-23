@@ -20,7 +20,7 @@ class MerkleTree(object):
 
     @classmethod
     def merkle_root_from_branch(cls, first, branches):
-        merkle_root = first
+        merkle_root = cls._get_hash(first)
         for i in branches:
             merkle_root = cls._get_hash(merkle_root + i)
         return merkle_root
