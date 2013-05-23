@@ -86,15 +86,15 @@ class Work(object):
     def process_block(self, block):
         logger.debug('process_block %s' % util.b2h(block))
         hash = hashlib.sha256(
-                hashlib.sha256(block[:80]).digest()).digest()[::-1]
+            hashlib.sha256(block[:80]).digest()).digest()[::-1]
         logger.debug('hash %s' % util.b2h(hash))
         logger.debug('target %s' % util.b2h(self._serialize_target()))
-        hash_long = util.bytes_to_long(hash[::-1])
+        hash_long = util.bytes_to_long(hash)
         if hash_long > self.target:
             logger.debug("Hash is bigger than target")
             return False
         real_target = util.bytes_to_long(
-            utils.h2b(self.block_template['target']))
+            util.h2b(self.block_template['target']))
         if hash_long < real_target:
             logger.debug("Found block candidate")
             for i in self.tx:
@@ -123,7 +123,7 @@ class Work(object):
     def getwork(self, params, uri):
         if len(params) > 0:
             block = util.h2b(params[0])
-            merkle_root = block_header[36:68]
+            merkle_root = block[36:68]
 
             if merkle_root not in self.work_data:
                 logger.error("Unknown worker submission")
