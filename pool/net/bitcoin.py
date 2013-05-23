@@ -86,6 +86,9 @@ class Bitcoin(object):
     def getmininginfo(self):
         return self._send_rpc('getmininginfo')
 
+    def submitblock(self, block):
+        return self._send_rpc('submitblock', [block])
+
     @classmethod
     def address_to_pubkey(cls, address):
         data = util.base58_decode(address, 25)

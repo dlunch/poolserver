@@ -83,11 +83,26 @@ class Work(object):
         self.seq += 1
         return util.b2h(struct.pack('<I', self.seq))
 
-    def process_block(self, block_header):
-        logger.debug('process_block %s' % util.b2h(block_header))
-        logger.debug('hash %s' % util.b2h(hashlib.sha256(
-            hashlib.sha256(block_header[:80]).digest()).digest()))
-        return False
+    def process_block(self, block):
+        logger.debug('process_block %s' % util.b2h(block))
+        hash = hashlib.sha256(
+                hashlib.sha256(block[:80]).digest()).digest()[::-1]
+        logger.debug('hash %s' % util.b2h(hash))
+        logger.debug('target %s' % util.b2h(self._serialize_target()))
+        hash_long = util.bytes_to_long(hash[::-1])
+        if hash_long > self.target:
+            logger.debug("Hash is bigger than target")
+            return False
+        real_target = util.bytes_to_long(
+            utils.h2b(self.block_template['target']))
+        if hash_long < real_target:
+            logger.debug("Found block candidate")
+            for i in self.tx:
+                block += i.raw_tx
+            logger.debug("Submitting %s" % util.b2h(block))
+            self.net.submitblock(block)
+
+        return True
 
     def create_block_header(self, merkle_root, ntime, nonce):
         version = self.block_template['version']
@@ -107,17 +122,17 @@ class Work(object):
 
     def getwork(self, params, uri):
         if len(params) > 0:
-            block_header = util.h2b(params[0])
+            block = util.h2b(params[0])
             merkle_root = block_header[36:68]
 
             if merkle_root not in self.work_data:
                 logger.error("Unknown worker submission")
                 return False
             coinbase_tx = self.work_data[merkle_root].raw_tx
-            block_header += util.encode_size(len(self.tx) + 1)
-            block_header += coinbase_tx
+            block += util.encode_size(len(self.tx) + 1)
+            block += coinbase_tx
 
-            result = self.process_block(block_header)
+            result = self.process_block(block)
 
             del self.work_data[merkle_root]
             return result
