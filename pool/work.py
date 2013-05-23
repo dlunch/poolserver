@@ -59,6 +59,9 @@ class Work(object):
                 self.longpoll_events = []
                 self.work_data = {}
 
+                merkle = MerkleTree([''] + [x.raw_tx for x in self.tx])
+                self.merkle_branch = merkle.branches
+
                 for i in events:
                     i.set()
                 if self.wait_event:
@@ -72,9 +75,6 @@ class Work(object):
         return CoinbaseTransaction(
             self.block_template, self.generation_pubkey,
             extranonce1, extranonce2)
-
-    def create_merkle(self, coinbase_tx):
-        return MerkleTree([x.raw_tx for x in [coinbase_tx] + self.tx])
 
     def _serialize_target(self):
         return util.long_to_bytes(self.target, 32)
@@ -129,16 +129,17 @@ class Work(object):
 
         coinbase_tx = self.create_coinbase_tx(
             util.h2b(self.get_work_id()), b'')
-        merkle = self.create_merkle(coinbase_tx)
+        merkle_root = MerkleTree.merkle_root_from_branch(
+            coinbase_tx.raw_tx, self.merkle_branch)
         ntime = struct.pack('<I', self.block_template['curtime'])
-        block_header = self.create_block_header(merkle.root, ntime,
+        block_header = self.create_block_header(merkle_root, ntime,
                                                 b'\x00\x00\x00\x00')
         block_header += (b"\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
                          b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
                          b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
                          b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x80")
 
-        self.work_data[merkle.root] = coinbase_tx
+        self.work_data[merkle_root] = coinbase_tx
 
         # To little endian
         block_header = b''.join([block_header[x:x+4][::-1]
@@ -203,13 +204,12 @@ class Work(object):
 
         coinbase_tx = self.create_coinbase_tx(
             extranonce1, b'\x00\x00\x00\x00')
-        merkle = self.create_merkle(coinbase_tx)
         coinbase_data = bytearray(coinbase_tx.raw_tx)
         orig_len = coinbase_data[41]
         firstpart_len = orig_len - 4 - config.extranonce2_size
         result.append(util.b2h(coinbase_data[:42+firstpart_len]))
         result.append(util.b2h(coinbase_data[42+orig_len:]))
-        result.append([util.b2h(x) for x in merkle.branches])
+        result.append([util.b2h(x) for x in self.merkle_branches])
         result.append(util.b2h(
                       struct.pack('>I', self.block_template['version'])))
         result.append(self.block_template['bits'])

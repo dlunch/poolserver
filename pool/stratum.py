@@ -8,6 +8,7 @@ from . import util
 from . import jsonrpc
 from . import config
 from .compat import str, bytes
+from .merkletree import MerkleTree
 
 
 class Stratum(object):
@@ -88,9 +89,9 @@ class Stratum(object):
 
         coinbase_tx = self.work.create_coinbase_tx(self.extranonce1,
                                                    util.h2b(extranonce2))
-        merkle = self.work.create_merkle(coinbase_tx)
-
-        block_header = self.work.create_block_header(merkle.root, ntime, nonce)
+        merkle_root = MerkleTree.merkle_root_from_branch(
+            coinbase_tx.raw_tx, self.work.merkle_branch)
+        block_header = self.work.create_block_header(merkle_root, ntime, nonce)
 
         block_header += util.encode_size(len(self.work.tx) + 1) +\
             coinbase_tx.raw_tx

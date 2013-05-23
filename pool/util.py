@@ -1,6 +1,5 @@
 import struct
 import binascii
-
 from .compat import str
 
 

@@ -14,5 +14,13 @@ class MerkleTree(object):
                     for i in range(0, len(data), 2)]
         self.root = data[0]
 
-    def _get_hash(self, data):
+    @classmethod
+    def _get_hash(cls, data):
         return hashlib.sha256(hashlib.sha256(data).digest()).digest()
+
+    @classmethod
+    def merkle_root_from_branch(cls, first, branches):
+        merkle_root = first
+        for i in branches:
+            merkle_root = cls._get_hash(merkle_root + i)
+        return merkle_root
