@@ -93,7 +93,7 @@ class Stratum(object):
         coinbase_tx = self.work.create_coinbase_tx(self.extranonce1,
                                                    util.h2b(extranonce2))
         merkle_root = MerkleTree.merkle_root_from_branch(
-            coinbase_tx.raw_tx, self.work.merkle_branch)
+            coinbase_tx.raw_tx, self.work.merkle_branches)
         block_header = self.work.create_block_header(merkle_root, ntime, nonce)
 
         block_header += util.encode_size(len(self.work.tx) + 1) +\

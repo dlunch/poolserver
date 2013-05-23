@@ -61,7 +61,7 @@ class Work(object):
                 self.work_data = {}
 
                 merkle = MerkleTree([''] + [x.raw_tx for x in self.tx])
-                self.merkle_branch = merkle.branches
+                self.merkle_branches = merkle.branches
 
                 for i in events:
                     i.set()
@@ -131,7 +131,7 @@ class Work(object):
         coinbase_tx = self.create_coinbase_tx(
             util.h2b(self.get_work_id()), b'')
         merkle_root = MerkleTree.merkle_root_from_branch(
-            coinbase_tx.raw_tx, self.merkle_branch)
+            coinbase_tx.raw_tx, self.merkle_branches)
         ntime = struct.pack('<I', self.block_template['curtime'])
         block_header = self.create_block_header(merkle_root, ntime,
                                                 b'\x00\x00\x00\x00')
