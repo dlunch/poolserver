@@ -17,7 +17,7 @@ class Stratum(object):
         self.file = file
         self.work = work
         self.last_work_id = ''
-        self.extranonce1 = struct.pack('<I', Stratum.seq ^ 0xdeadbeef)
+        self.extranonce1 = struct.pack('<I', Stratum.seq)
         self.difficulty = config.target_difficulty
         self.pusher = None
         Stratum.seq += 1

@@ -81,7 +81,7 @@ class Work(object):
 
     def get_work_id(self):
         self.seq += 1
-        return util.b2h(struct.pack('<I', self.seq ^ 0xdeadbeef))
+        return util.b2h(struct.pack('<I', self.seq))
 
     def process_block(self, block_header):
         logger.debug('process_block %s' % util.b2h(block_header))
