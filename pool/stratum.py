@@ -6,6 +6,7 @@ import traceback
 logger = logging.getLogger('Stratum')
 
 from . import util
+from . import user
 from . import jsonrpc
 from . import config
 from .compat import str, bytes
@@ -20,8 +21,8 @@ class Stratum(object):
         self.work = work
         self.last_work_id = ''
         self.extranonce1 = struct.pack('<I', Stratum.seq)
-        self.difficulty = config.target_difficulty
         self.pusher = None
+        self.auth = {'username': 'NotAuthorized', 'difficulty': 1}
         Stratum.seq += 1
 
     def _send_stratum_message(self, message):
@@ -35,7 +36,7 @@ class Stratum(object):
             while True:
                 self._send_stratum_message(jsonrpc.create_request(
                                            'mining.set_difficulty',
-                                           [self.difficulty]))
+                                           [self.auth['difficulty']]))
 
                 params = self.work.get_stratum_work(self.extranonce1)
                 self._send_stratum_message(jsonrpc.create_request(
@@ -54,7 +55,8 @@ class Stratum(object):
             line = firstline
             while True:
                 logger.debug('Stratum receive: %s' % line)
-                _, response = jsonrpc.process_request(None, None, line, self)
+                _, response = jsonrpc.process_request(None, None, line, self,
+                                                      self.auth)
                 self._send_stratum_message(response)
 
                 line = str(self.file.readline(), 'ascii')
@@ -67,16 +69,17 @@ class Stratum(object):
             if self.pusher:
                 self.pusher.kill()
 
-    def mining_subscribe(self, params, uri):
+    def mining_subscribe(self, params, uri, auth):
         self.pusher = gevent.spawn(self.block_pusher)
         nonce1 = util.b2h(self.extranonce1)
         return [['mining.notify', 'ae6812eb4cd7735a302a8a9dd95cf71f'],
                 nonce1, config.extranonce2_size]
 
-    def mining_authorize(self, params, uri):
-        return True
+    def mining_authorize(self, params, uri, auth):
+        self.auth = user.authenticate(params[0], params[1])
+        return self.auth['result']
 
-    def mining_submit(self, params, uri):
+    def mining_submit(self, params, uri, auth):
         worker_name = params[0]  # From authorize
         work_id = params[1]
         extranonce2 = params[2]
@@ -98,7 +101,7 @@ class Stratum(object):
 
         block_header += util.encode_size(len(self.work.tx) + 1) +\
             coinbase_tx.raw_tx
-        return self.work.process_block(block_header)
+        return self.work.process_block(block_header, auth)
 
-    def mining_get_transactions(self, params, uri):
+    def mining_get_transactions(self, params, uri, auth):
         return [util.b2h(x.raw_tx) for x in self.work.tx]

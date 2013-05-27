@@ -4,6 +4,7 @@ import gevent.server
 gevent.monkey.patch_all()
 
 import traceback
+import base64
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
@@ -12,8 +13,10 @@ logger = logging.getLogger('Pool')
 from . import config
 from . import work
 from . import jsonrpc
+from . import user
 from .stratum import Stratum
 from .errors import IsStratumConnection
+from .compat import str
 
 
 class Pool(object):
@@ -37,7 +40,7 @@ class Pool(object):
                 version = self.net.getinfo()
                 info = self.net.getmininginfo()
                 break
-            except Exception as e:
+            except Exception:
                 logger.error("Cannot connect to bitcoind:")
                 logger.error(traceback.format_exc())
             gevent.sleep(1)
@@ -48,10 +51,7 @@ class Pool(object):
 
         self.generation_pubkey =\
             self.net.address_to_pubkey(config.generation_address)
-        self.target_difficulty =\
-            self.net.difficulty_to_target(config.target_difficulty)
-        self.work = work.Work(self.net, self.target_difficulty,
-                              self.generation_pubkey)
+        self.work = work.Work(self.net, self.generation_pubkey)
 
     def run(self):
         self.work.start_refresher()
@@ -70,9 +70,19 @@ class Pool(object):
             file = socket.makefile()
             headers, uri, data = jsonrpc.read_http_request(file)
 
+            auth = {'username': 'NotAuthorized', 'difficulty': 1}
+            if 'authorization' in headers:
+                _, auth = headers['authorization'].split(' ')
+                username, password = str(base64.decodestring(auth), 'ascii').\
+                    split(':')
+                auth = user.authenticate(username, password)
+                if not auth['result']:
+                    jsonrpc.send_http_response(file, 403, None, {})
+                    return
+
             logger.debug('\nRequest: %s' % (data))
             code, result = jsonrpc.process_request(headers, uri, data,
-                                                   self.work)
+                                                   self.work, auth)
             logger.debug('\nResponse:%s' % (result))
             jsonrpc.send_http_response(file, code, result,
                                        self._get_extended_headers(headers))

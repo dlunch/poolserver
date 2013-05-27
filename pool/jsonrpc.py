@@ -45,6 +45,8 @@ def send_http_response(file, code, content, headers=None):
         message = 'Internal Server Error'
     elif code == 400:
         message = 'Bad Request'
+    elif code == 403:
+        message = 'Forbidden'
     file.write(bytes('HTTP/1.1 %d %s\r\n' % (code, message), 'ascii'))
     file.write(bytes('Server: dlunchpool\r\n', 'ascii'))
     if content:
@@ -73,7 +75,7 @@ def create_error_response(id, error_code, error_message):
                                       'data': None})
 
 
-def process_request(headers, uri, data, handler):
+def process_request(headers, uri, data, handler, auth):
     try:
         try:
             data = json.loads(data)
@@ -88,7 +90,7 @@ def process_request(headers, uri, data, handler):
             raise JSONRPCError(-32601, 'Method Not Found')
         method = getattr(handler, method_name)
         params = data['params']
-        response = create_response(data['id'], method(params, uri))
+        response = create_response(data['id'], method(params, uri, auth))
         return 200, response
     except JSONRPCError as e:
         id = data['id'] if type(data) == dict and 'id' in data else None

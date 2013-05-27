@@ -11,15 +11,15 @@ from . import util
 from . import config
 from .errors import RPCError
 from .merkletree import MerkleTree
+from . import user
 
 logger = logging.getLogger('Work')
 
 
 class Work(object):
-    def __init__(self, net, target, generation_pubkey):
+    def __init__(self, net, generation_pubkey):
         self.seq = 0
         self.net = net
-        self.target = target
         self.generation_pubkey = generation_pubkey
         self.longpoll_events = []
         self.work_data = {}
@@ -76,31 +76,38 @@ class Work(object):
             self.block_template, self.generation_pubkey,
             extranonce1, extranonce2)
 
-    def _serialize_target(self):
-        return util.long_to_bytes(self.target, 32)
+    def _get_target(self, difficulty):
+        target = self.net.difficulty_to_target(difficulty)
+        return util.long_to_bytes(target, 32)
 
     def get_work_id(self):
         self.seq += 1
         return util.b2h(struct.pack('<I', self.seq))
 
-    def process_block(self, block):
+    def process_block(self, block, auth):
         logger.debug('process_block %s' % util.b2h(block))
         hash = hashlib.sha256(
             hashlib.sha256(block[:80]).digest()).digest()[::-1]
         logger.debug('hash %s' % util.b2h(hash))
-        logger.debug('target %s' % util.b2h(self._serialize_target()))
+        logger.debug('target %s' %
+                     util.b2h(self._get_target(auth['difficulty'])))
         hash_long = util.bytes_to_long(hash)
         if hash_long > self.target:
             logger.debug("Hash is bigger than target")
             return False
         real_target = util.bytes_to_long(
             util.h2b(self.block_template['target']))
+        logger.debug('real target %s' % self.block_template['target'])
+        user.share_accepted(auth['username'])
         if hash_long < real_target:
             logger.debug("Found block candidate")
             for i in self.tx:
                 block += i.raw_tx
             logger.debug("Submitting %s" % util.b2h(block))
-            self.net.submitblock(block)
+            result = self.net.submitblock(block)
+            if result is None:
+                user.block_found(auth['username'],
+                                 self.block_template['height'])
 
         return True
 
@@ -120,7 +127,7 @@ class Work(object):
 
         return block_header
 
-    def getwork(self, params, uri):
+    def getwork(self, params, uri, auth):
         if len(params) > 0:
             block = util.h2b(params[0])
             merkle_root = block[36:68]
@@ -132,7 +139,7 @@ class Work(object):
             block += util.encode_size(len(self.tx) + 1)
             block += coinbase_tx
 
-            result = self.process_block(block)
+            result = self.process_block(block, auth)
 
             del self.work_data[merkle_root]
             return result
@@ -159,13 +166,13 @@ class Work(object):
         # To little endian
         block_header = b''.join([block_header[x:x+4][::-1]
                                 for x in range(0, len(block_header), 4)])
-        target = util.b2h(self._serialize_target()[::-1])
+        target = util.b2h(self._get_target(auth['difficulty'])[::-1])
         block_header = util.b2h(block_header)
         #TODO midstate, hash1 (deprecated)
         return {'data': block_header,
                 'target': target}
 
-    def getblocktemplate(self, params, uri):
+    def getblocktemplate(self, params, uri, auth):
         """For worker"""
 
         longpollid = 'init'
@@ -186,7 +193,7 @@ class Work(object):
 
                 txlen = CoinbaseTransaction.verify(block[ptr:],
                                                    self.generation_pubkey)
-                result = self.process_block(block[:ptr+txlen])
+                result = self.process_block(block[:ptr+txlen], auth)
                 if result:
                     return None
             except:
@@ -205,7 +212,8 @@ class Work(object):
                           if k not in
                           ['coinbasevalue', 'coinbaseaux', 'coinbaseflags']}
 
-        block_template['target'] = util.b2h(self._serialize_target())
+        block_template['target'] = util.b2h(
+            self._get_target(auth['difficulty']))
         block_template['mutable'] = ["coinbase/append", "submit/coinbase"]
         block_template['transactions'] = [x.serialize() for x in self.tx]
         block_template['coinbasetxn'] = coinbase_tx.serialize()
@@ -244,9 +252,9 @@ class Work(object):
 
         return result
 
-    def submitblock(self, params, uri):
+    def submitblock(self, params, uri, auth):
         block = util.h2b(params[0])
-        result = self.process_block(block)
+        result = self.process_block(block, auth)
         if not result:
             return "Rejected"
         return None
