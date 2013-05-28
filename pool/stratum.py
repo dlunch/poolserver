@@ -22,7 +22,7 @@ class Stratum(object):
         self.file = file
         self.work = work
         self.last_work_id = ''
-        self.extranonce1 = struct.pack('<I', Stratum.seq)
+        self.extranonce1 = struct.pack(b'<I', Stratum.seq)
         self.pusher = None
         self.auth = {'username': 'NotAuthorized', 'difficulty': 1}
         Stratum.seq += 1

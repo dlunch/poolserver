@@ -120,7 +120,7 @@ class Work(object):
             self.block_template['previousblockhash'])[::-1]
         bits = util.h2b(self.block_template['bits'])[::-1]
 
-        block_header = struct.pack('<I', version) +\
+        block_header = struct.pack(b'<I', version) +\
             prevblockhash +\
             merkle_root +\
             ntime +\
@@ -155,7 +155,7 @@ class Work(object):
             util.h2b(self.get_work_id()), b'')
         merkle_root = MerkleTree.merkle_root_from_branch(
             coinbase_tx.raw_tx, self.merkle_branches)
-        ntime = struct.pack('<I', self.block_template['curtime'])
+        ntime = struct.pack(b'<I', self.block_template['curtime'])
         block_header = self.create_block_header(merkle_root, ntime,
                                                 b'\x00\x00\x00\x00')
         block_header += (b"\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -246,10 +246,10 @@ class Work(object):
         result.append(util.b2h(coinbase_data[42+orig_len:]))
         result.append([util.b2h(x) for x in self.merkle_branches])
         result.append(util.b2h(
-                      struct.pack('>I', self.block_template['version'])))
+                      struct.pack(b'>I', self.block_template['version'])))
         result.append(self.block_template['bits'])
         result.append(util.b2h(
-                      struct.pack('>I', self.block_template['curtime'])))
+                      struct.pack(b'>I', self.block_template['curtime'])))
         result.append(True)
 
         return result

@@ -42,7 +42,7 @@ class CoinbaseTransaction(object):
         result += coinbase_script
         result += b'\xff\xff\xff\xff'  # Sequence
         result += b'\x01'  # Out counter(1)
-        result += struct.pack('<Q', coinbase_value)
+        result += struct.pack(b'<Q', coinbase_value)
         result += util.encode_size(len(output_script))
         result += output_script
         result += b'\x00\x00\x00\x00'  # Lock time
