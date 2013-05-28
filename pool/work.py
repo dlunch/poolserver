@@ -1,3 +1,5 @@
+from __future__ import absolute_import, unicode_literals
+
 import gevent
 import gevent.event
 import logging
@@ -5,13 +7,13 @@ import struct
 import traceback
 import hashlib
 
-from .transaction import Transaction
-from .coinbase_transaction import CoinbaseTransaction
-from . import util
-from . import config
-from .errors import RPCError
-from .merkletree import MerkleTree
-from . import user
+from pool.transaction import Transaction
+from pool.coinbase_transaction import CoinbaseTransaction
+from pool import util
+from pool import config
+from pool.errors import RPCError
+from pool.merkletree import MerkleTree
+from pool import user
 
 logger = logging.getLogger('Work')
 
@@ -59,7 +61,7 @@ class Work(object):
                 self.longpoll_events = []
                 self.work_data = {}
 
-                merkle = MerkleTree([''] + [x.raw_tx for x in self.tx])
+                merkle = MerkleTree([b''] + [x.raw_tx for x in self.tx])
                 self.merkle_branches = merkle.branches
 
                 for i in events:
@@ -82,7 +84,7 @@ class Work(object):
 
     def get_work_id(self):
         self.seq += 1
-        return util.b2h(struct.pack('<I', self.seq))
+        return util.b2h(struct.pack(b'<I', self.seq))
 
     def process_block(self, block, auth):
         logger.debug('process_block %s' % util.b2h(block))

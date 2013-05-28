@@ -1,5 +1,7 @@
-from . import util
-from .compat import str
+from __future__ import absolute_import, unicode_literals
+
+from pool import util
+from pool.compat import str
 
 class Transaction(object):
     def __init__(self, tx_data):

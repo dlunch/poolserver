@@ -1,4 +1,6 @@
-from . import bitcoin
+from __future__ import absolute_import, unicode_literals
+
+from pool.net import bitcoin
 
 
 class BitcoinTestnet(bitcoin.Bitcoin):

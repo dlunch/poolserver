@@ -1,3 +1,5 @@
+from __future__ import absolute_import, unicode_literals
+
 import gevent
 import gevent.event
 import logging
@@ -5,12 +7,12 @@ import struct
 import traceback
 logger = logging.getLogger('Stratum')
 
-from . import util
-from . import user
-from . import jsonrpc
-from . import config
-from .compat import str, bytes
-from .merkletree import MerkleTree
+from pool import util
+from pool import user
+from pool import jsonrpc
+from pool import config
+from pool.compat import str, bytes
+from pool.merkletree import MerkleTree
 
 
 class Stratum(object):

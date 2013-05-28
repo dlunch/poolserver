@@ -1,7 +1,13 @@
+from __future__ import absolute_import, unicode_literals
+
+import os
 import gevent
-import gevent.monkey
 import gevent.server
-gevent.monkey.patch_all()
+
+import sys
+if sys.version_info[0] < 3:
+    import gevent.monkey
+    gevent.monkey.patch_all()
 
 import traceback
 import base64
@@ -10,26 +16,26 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 logger = logging.getLogger('Pool')
 
-from . import config
-from . import work
-from . import jsonrpc
-from . import user
-from .stratum import Stratum
-from .errors import IsStratumConnection
-from .compat import str
+from pool import config
+from pool import work
+from pool import jsonrpc
+from pool import user
+from pool.stratum import Stratum
+from pool.errors import IsStratumConnection
+from pool.compat import str, bytes
 
 
 class Pool(object):
     def __init__(self):
         if config.net == 'bitcoin':
-            from .net import bitcoin
+            from pool.net import bitcoin
             self.net = bitcoin.Bitcoin(
                 config.rpc_host,
                 config.rpc_port,
                 config.rpc_username,
                 config.rpc_password)
         elif config.net == 'bitcoin_testnet':
-            from .net import bitcoin_testnet
+            from pool.net import bitcoin_testnet
             self.net = bitcoin_testnet.BitcoinTestnet(
                 config.rpc_host,
                 config.rpc_port,
@@ -73,8 +79,8 @@ class Pool(object):
             auth = {'username': 'NotAuthorized', 'difficulty': 1}
             if 'authorization' in headers:
                 _, auth = headers['authorization'].split(' ')
-                username, password = str(base64.decodestring(auth), 'ascii').\
-                    split(':')
+                username, password = str(base64.decodestring(
+                    bytes(auth, 'ascii')), 'ascii').split(':')
                 auth = user.authenticate(username, password)
                 if not auth['result']:
                     jsonrpc.send_http_response(file, 403, None, {})

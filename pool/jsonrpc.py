@@ -1,3 +1,5 @@
+from __future__ import absolute_import, unicode_literals
+
 import gevent
 import json
 import logging
@@ -5,8 +7,8 @@ import traceback
 logger = logging.getLogger('JsonRPC')
 
 
-from .errors import IsStratumConnection
-from .compat import str, bytes
+from pool.errors import IsStratumConnection
+from pool.compat import str, bytes
 
 
 class JSONRPCError(Exception):

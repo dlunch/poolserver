@@ -4,6 +4,7 @@ try:
     bytes = bytes
 except:
     import __builtin__
+
     def str(string, encoding):
         return __builtin__.str(string)
 

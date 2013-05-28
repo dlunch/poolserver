@@ -1,4 +1,6 @@
-from . import config
+from __future__ import absolute_import, unicode_literals
+
+from pool import config
 
 
 def authenticate(username, password):

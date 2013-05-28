@@ -1,3 +1,5 @@
+from __future__ import absolute_import, unicode_literals
+
 try:
     from urllib.request import Request, urlopen
     from urllib.error import HTTPError
@@ -9,9 +11,9 @@ import base64
 import hashlib
 import logging
 
-from .. import util
-from ..errors import RPCError
-from ..compat import str, bytes
+from pool import util
+from pool.errors import RPCError
+from pool.compat import str, bytes
 
 logger = logging.getLogger('Bitcoin')
 

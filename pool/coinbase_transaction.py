@@ -1,10 +1,12 @@
+from __future__ import absolute_import, unicode_literals
+
 import struct
 import logging
 logger = logging.getLogger('Coinbase')
 
 
-from . import util
-from .transaction import Transaction
+from pool import util
+from pool.transaction import Transaction
 
 
 class CoinbaseTransaction(object):

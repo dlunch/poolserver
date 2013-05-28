@@ -1,6 +1,8 @@
+from __future__ import absolute_import, unicode_literals
+
 import struct
 import binascii
-from .compat import str
+from pool.compat import str
 
 
 def long_to_bytes(n, blocksize=0):
@@ -15,9 +17,8 @@ def long_to_bytes(n, blocksize=0):
     """
     # after much testing, this algorithm was deemed to be the fastest
     s = b''
-    pack = struct.pack
     while n > 0:
-        s = pack('>I', n & 0xffffffff) + s
+        s = struct.pack(b'>I', n & 0xffffffff) + s
         n = n >> 32
     # strip off leading zeros
     for i in range(len(s)):
@@ -42,14 +43,13 @@ def bytes_to_long(s):
     This is (essentially) the inverse of long_to_bytes().
     """
     acc = 0
-    unpack = struct.unpack
     length = len(s)
     if length % 4:
         extra = (4 - length % 4)
         s = b'\x00' * extra + s
         length = length + extra
     for i in range(0, length, 4):
-        acc = (acc << 32) + unpack('>I', s[i:i+4])[0]
+        acc = (acc << 32) + struct.unpack(b'>I', s[i:i+4])[0]
     return acc
 
 
@@ -77,36 +77,36 @@ def base58_decode(data, size):
 
 
 def encode_height(height):
-    data = struct.pack('<Q', height)
+    data = struct.pack(b'<Q', height)
     for i in range(len(data)):
         if data[i] == b'\x00'[0]:
             break
     data = data[:i]
     if len(data) == 2:
         data = data + b'\x00'
-    return struct.pack('B', len(data)) + data
+    return struct.pack(b'B', len(data)) + data
 
 
 def encode_size(size):
     if size < 0xfd:
-        return struct.pack('B', size)
+        return struct.pack(b'B', size)
     elif size < 0xffff:
-        return b'\xfd' + struct.pack('<H', size)
+        return b'\xfd' + struct.pack(b'<H', size)
     elif size < 0xffffffff:
-        return b'\xfe' + struct.pack('<I', size)
+        return b'\xfe' + struct.pack(b'<I', size)
     else:
-        return b'\xff' + struct.pack('<Q', size)
+        return b'\xff' + struct.pack(b'<Q', size)
 
 
 def decode_size(data):
     if data[0] < b'\xfd':
-        return 1, struct.unpack('B', data[0])[0]
+        return 1, struct.unpack(b'B', data[0])[0]
     elif data[0] == b'\xfd':
-        return 3, struct.unpack('<H', data[0:2])[0]
+        return 3, struct.unpack(b'<H', data[0:2])[0]
     elif data[0] == b'\xfe':
-        return 5, struct.unpack('<I', data[0:4])[0]
+        return 5, struct.unpack(b'<I', data[0:4])[0]
     elif data[0] == b'\xff':
-        return 9, struct.unpack('<I', data[0:8])[0]
+        return 9, struct.unpack(b'<I', data[0:8])[0]
 
 def b2h(data):
     return str(binascii.hexlify(data), 'ascii')
