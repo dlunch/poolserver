@@ -88,24 +88,29 @@ class Work(object):
 
     def process_block(self, block, auth):
         logger.debug('process_block %s' % util.b2h(block))
-        hash = hashlib.sha256(
-            hashlib.sha256(block[:80]).digest()).digest()[::-1]
+
+        hash = self.net.hash_block_header(block[:80])
+        target = self._get_target(auth['difficulty'])
         logger.debug('hash %s' % util.b2h(hash))
-        logger.debug('target %s' %
-                     util.b2h(self._get_target(auth['difficulty'])))
+        logger.debug('target %s' % util.b2h(target))
+
         hash_long = util.bytes_to_long(hash)
-        if hash_long > self.target:
+        target_long = util.bytes_to_long(target)
+        if hash_long > target_long:
             logger.debug("Hash is bigger than target")
             return False
+
         real_target = util.bytes_to_long(
             util.h2b(self.block_template['target']))
         logger.debug('real target %s' % self.block_template['target'])
+
         user.share_accepted(auth['username'])
         if hash_long < real_target:
             logger.debug("Found block candidate")
             for i in self.tx:
                 block += i.raw_tx
             logger.debug("Submitting %s" % util.b2h(block))
+
             result = self.net.submitblock(block)
             if result is None:
                 user.block_found(auth['username'],

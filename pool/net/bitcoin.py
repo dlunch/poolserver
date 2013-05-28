@@ -110,3 +110,7 @@ class Bitcoin(object):
     def difficulty_to_target(cls, difficulty):
         # 208 == 26*8
         return int((0xffff << 208) / difficulty)
+
+    @classmethod
+    def hash_block_header(cls, header):
+        return hashlib.sha256(hashlib.sha256(header).digest()).digest()[::-1]
