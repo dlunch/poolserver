@@ -72,9 +72,14 @@ class Bitcoin(object):
             file = urlopen(req)
             result = file.read()
             file.close()
+            result = json.loads(str(result, 'ascii'))
         except HTTPError as e:
-            result = e.read()
-        result = json.loads(str(result, 'ascii'))
+            try:
+                result = e.read()
+                result = json.loads(str(result, 'ascii'))
+            except:
+                logger.error(result)
+                raise e
         if result['error']:
             raise RPCError(result['error'])
         return result['result']
