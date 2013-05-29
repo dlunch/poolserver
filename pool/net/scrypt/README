@@ -1,0 +1,2 @@
+To compile:
+gcc -O3 --shared -fPIC scrypt.c -o script_native.so

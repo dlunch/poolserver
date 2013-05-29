@@ -41,6 +41,19 @@ class Pool(object):
                 config.rpc_port,
                 config.rpc_username,
                 config.rpc_password)
+        elif config.net == 'litecoin':
+            from pool.net import litecoin
+            self.net = litecoin.Litecoin(config.rpc_host,
+                config.rpc_port,
+                config.rpc_username,
+                config.rpc_password)
+        elif config.net == 'litecoin_testnet':
+            from pool.net import litecoin_testnet
+            self.net = litecoin_testnet.LitecoinTestnet(config.rpc_host,
+                config.rpc_port,
+                config.rpc_username,
+                config.rpc_password)
+
         while True:
             try:
                 version = self.net.getinfo()
