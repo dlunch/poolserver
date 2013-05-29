@@ -111,7 +111,7 @@ class Work(object):
                 block += i.raw_tx
             logger.debug("Submitting %s" % util.b2h(block))
 
-            result = self.net.submitblock(block)
+            result = self.net.submitblock(util.b2h(block))
             if result is None:
                 user.block_found(auth['username'],
                                  self.block_template['height'])
