@@ -10,6 +10,9 @@ class Litecoin(bitcoin.Bitcoin):
     def _get_default_port(self):
         return 9332
 
+    def _get_config_file(self):
+        return os.path.join(os.path.expanduser('~/.litecoin'), 'litecoin.conf')
+
     def getblocktemplate(self):
         return self._send_rpc('getblocktemplate', [{}])
 
