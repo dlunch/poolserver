@@ -5,7 +5,6 @@ import gevent.event
 import logging
 import struct
 import traceback
-import hashlib
 
 from pool.transaction import Transaction
 from pool.coinbase_transaction import CoinbaseTransaction
@@ -115,6 +114,7 @@ class Work(object):
             if result is None:
                 user.block_found(auth['username'],
                                  self.block_template['height'])
+                self.block_event.set()
 
         return True
 
