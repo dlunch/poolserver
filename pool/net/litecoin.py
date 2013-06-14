@@ -1,5 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
+import os
+
 from pool.net import bitcoin
 from pool.net.scrypt import scrypt
 
