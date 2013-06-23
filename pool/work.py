@@ -12,7 +12,7 @@ from pool import util
 from pool import config
 from pool.errors import RPCError
 from pool.merkletree import MerkleTree
-from pool import user
+from pool import database
 
 logger = logging.getLogger('Work')
 
@@ -53,6 +53,7 @@ class Work(object):
                 self.block_template['transactions'] !=\
                     block_template['transactions']:
 
+                database.start_round(block_template['height'])
                 self.block_template = block_template
                 self.tx = [Transaction(x) for x in
                            self.block_template['transactions']]
@@ -103,7 +104,7 @@ class Work(object):
             util.h2b(self.block_template['target']))
         logger.debug('real target %s' % self.block_template['target'])
 
-        user.share_accepted(auth['username'])
+        database.share_accepted(auth['id'])
         if hash_long < real_target:
             logger.debug("Found block candidate")
             for i in self.tx:
@@ -112,8 +113,8 @@ class Work(object):
 
             result = self.net.submitblock(util.b2h(block))
             if result is None:
-                user.block_found(auth['username'],
-                                 self.block_template['height'])
+                database.block_found(auth['id'],
+                                     self.block_template['height'])
                 self.block_event.set()
 
         return True

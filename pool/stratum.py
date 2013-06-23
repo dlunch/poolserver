@@ -8,7 +8,7 @@ import traceback
 logger = logging.getLogger('Stratum')
 
 from pool import util
-from pool import user
+from pool import database
 from pool import jsonrpc
 from pool import config
 from pool.compat import str, bytes
@@ -78,7 +78,7 @@ class Stratum(object):
                 nonce1, config.extranonce2_size]
 
     def mining_authorize(self, params, uri, auth):
-        self.auth = user.authenticate(params[0], params[1])
+        self.auth = database.authenticate(params[0], params[1])
         return self.auth['result']
 
     def mining_submit(self, params, uri, auth):

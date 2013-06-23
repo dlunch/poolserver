@@ -13,3 +13,9 @@ rpc_host = ''
 rpc_port = None
 rpc_username = ''
 rpc_password = ''
+
+#You can use any dbapi-2.0 compliant database module here.
+db_string = "dbname=pool user=pool"
+
+import psycopg2
+db_connection = psycopg2.connect(db_string)

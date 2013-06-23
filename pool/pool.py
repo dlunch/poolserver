@@ -19,7 +19,7 @@ logger = logging.getLogger('Pool')
 from pool import config
 from pool import work
 from pool import jsonrpc
-from pool import user
+from pool import database
 from pool.stratum import Stratum
 from pool.errors import IsStratumConnection
 from pool.compat import str, bytes
@@ -94,7 +94,7 @@ class Pool(object):
                 _, auth = headers['authorization'].split(' ')
                 username, password = str(base64.decodestring(
                     bytes(auth, 'ascii')), 'ascii').split(':')
-                auth = user.authenticate(username, password)
+                auth = database.authenticate(username, password)
                 if not auth['result']:
                     jsonrpc.send_http_response(file, 403, None, {})
                     return
